@@ -1,11 +1,3 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Portolan 1565: an open-world sailing and trading game set in the Renaissance Mediterranean, Black Sea and Atlantic.">
-<meta name="theme-color" content="#10394a">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}*,*::before,*::after{box-sizing:border-box}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Portolan 1565</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -54,6 +46,7 @@ body { background: var(--sea); color: var(--paper); font-family: var(--font-body
 .toast { background: var(--panel-solid); border: 1px solid var(--line); border-left: 3px solid var(--sea-2); border-radius: 5px; padding: 8px 12px; display: grid; gap: 2px; animation: tin .3s ease-out; transition: opacity .4s, transform .4s; }
 .toast strong { font-family: var(--font-display); font-weight: 400; font-size: 16px; }
 .toast span { font-size: 13px; color: var(--mute); }
+.toast span + span { margin-top: 2px; }
 .toast.gold { border-left-color: var(--gilt); } .toast.bad { border-left-color: var(--bad); }
 .toast.out { opacity: 0; transform: translateY(-6px); }
 @keyframes tin { from { opacity: 0; transform: translateY(-8px); } }
@@ -226,6 +219,24 @@ button:focus-visible, input:focus-visible, label.origin:focus-within { outline: 
 .rep { grid-template-columns: 21px minmax(0, 1fr) 90px 70px; }
 .course { grid-template-columns: 21px minmax(0, 1fr) auto; }
 .origin { grid-template-columns: auto 21px minmax(0, 1fr); }
+#portHead { position: relative; min-height: 140px; align-items: flex-end; padding-top: 72px; overflow: hidden; border-radius: 8px 8px 0 0; }
+#portHead > * { position: relative; z-index: 1; }
+#portHead canvas.harbour { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; }
+#portHead h2 { text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+#portHead p { color: #e6dcc4; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+#portHead .tune { font-family: var(--font-italic); font-style: italic; font-size: 12px; color: var(--gilt); margin-top: 2px; }
+#portHead .purse { background: rgba(23,19,13,.72); border-radius: 6px; padding: 6px 10px; }
+.tabs { gap: 4px; padding: 6px 10px 0; flex: none; }
+.modal header, .modal footer { flex: none; }
+.tabs button { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; font-size: 13px; padding: 8px 12px 9px; min-width: 70px; }
+.tabs button svg { flex: none; width: 22px; height: 22px; min-height: 22px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: .85; }
+.tabs button[aria-selected="true"] svg { color: var(--gilt); opacity: 1; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-btn { font: inherit; font-size: 13px; border: 1px solid var(--line); background: transparent; color: var(--mute); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.chip-btn[aria-pressed="true"] { background: var(--gilt); border-color: var(--gilt); color: var(--ink); font-weight: 700; }
+.voyrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.mgroup { margin: 6px 0 0; font-family: var(--font-display); font-weight: 400; font-size: 14px; letter-spacing: .05em; color: var(--gilt); }
+@media (max-width: 560px) { .tabs button { min-width: 0; padding: 7px 8px; font-size: 12px; } #portHead { padding-top: 56px; min-height: 120px; } }
 .langrow { display: flex; justify-content: flex-end; }
 .seg.lang button { min-height: 32px; padding: 6px 12px; }
 .rankbar { display: block; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: 6px; max-width: 320px; } .rankbar i { display: block; height: 100%; background: var(--gilt); }
@@ -268,9 +279,6 @@ button:focus-visible, input:focus-visible, label.origin:focus-within { outline: 
 @media (max-width: 560px) { #mini { width: 140px; } .instr .region { font-size: 11px; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
-</head>
-<body>
-
 
 <div id="seaWrap"><canvas id="sea" aria-label="Chart of the Mediterranean. Click to steer."></canvas></div>
 
@@ -314,6 +322,7 @@ button:focus-visible, input:focus-visible, label.origin:focus-within { outline: 
         </div>
         <button class="iconbtn" data-act="zout" aria-label="Zoom out">−</button>
         <button class="iconbtn" data-act="zin" aria-label="Zoom in">+</button>
+        <button class="iconbtn textbtn" id="sndBtn" data-act="sound" aria-pressed="true" title="Sound and music">Sound</button>
         <button class="iconbtn textbtn" id="tiltBtn" data-act="tilt" aria-pressed="true" title="3D view (V)">3D</button>
         <button class="iconbtn" id="fastBtn" data-act="fast" aria-pressed="false" aria-label="Fast time" title="Fast time (F)">»</button>
         <button class="iconbtn textbtn" data-act="chart" title="Plot a course (C)">Chart</button>
@@ -369,11 +378,21 @@ button:focus-visible, input:focus-visible, label.origin:focus-within { outline: 
 <script>
 // ================= GEOGRAPHY: the Mediterranean, c. 1565 =================
 // World units are nautical miles. 1 degree of latitude = 60 nm.
+// Each sea is its own chart ("theatre"). They sit side by side in one coordinate space, separated by
+// uncharted land, so ships can never sail from one to another: you travel between them by long voyage.
+const THEATRES = {
+  med:    { name: 'Mediterranean', lon0: -28, lat0: 47, lon1: 42, lat1: 4, ref: 38 },
+  carib:  { name: 'The Indies', lon0: -98, lat0: 31, lon1: -58, lat1: 7, ref: 19 },
+  indian: { name: 'The Arabian Sea', lon0: 31, lat0: 32, lon1: 80, lat1: -10, ref: 12 },
+};
+const THEATRE_KEYS = ['med', 'carib', 'indian'];
+(() => { let ox = 0; for (const k of THEATRE_KEYS) { const T = THEATRES[k]; T.kx = 60 * Math.cos(T.ref * Math.PI / 180); T.w = (T.lon1 - T.lon0) * T.kx; T.h = (T.lat0 - T.lat1) * 60; T.ox = ox; T.oy = 0; ox += T.w + 600; } })();
 const LON0 = -28, LAT0 = 47, LON1 = 42, LAT1 = 4;
 const OLD_LON0 = -7; // saves made before the Atlantic was charted used this origin
-const KX = 60 * Math.cos(38 * Math.PI / 180), KY = 60;
-const proj = (lon, lat) => [(lon - LON0) * KX, (LAT0 - lat) * KY];
-const WORLD_W = (LON1 - LON0) * KX, WORLD_H = (LAT0 - LAT1) * KY;
+const KX = THEATRES.med.kx, KY = 60;
+const proj = (lon, lat, th = 'med') => { const T = THEATRES[th]; return [T.ox + (lon - T.lon0) * T.kx, T.oy + (T.lat0 - lat) * KY]; };
+const WORLD_W = THEATRES.indian.ox + THEATRES.indian.w, WORLD_H = Math.max(...THEATRE_KEYS.map(k => THEATRES[k].h));
+function theatreAtX(x) { for (const k of THEATRE_KEYS) { const T = THEATRES[k]; if (x >= T.ox - 0.5 && x <= T.ox + T.w + 0.5) return k; } return null; }
 
 const MAIN_COAST = [
   [-2.2,47],[-2.0,46.8],[-1.8,46.5],[-1.4,46.25],[-1.15,46.1],[-1.1,45.8],[-1.2,45.6],[-1.25,45.0],[-1.25,44.4],[-1.45,43.6],[-1.8,43.38],[-2.5,43.35],[-3.0,43.38],[-3.8,43.48],[-4.7,43.42],[-5.8,43.6],[-6.5,43.57],[-7.5,43.73],[-8.2,43.5],[-8.4,43.38],[-9.0,43.2],[-9.3,42.9],[-8.9,42.4],[-8.85,41.9],[-8.7,41.4],[-8.65,41.15],[-8.8,40.6],[-9.0,40.0],[-9.35,39.4],[-9.48,38.75],[-9.2,38.66],[-9.1,38.45],[-8.85,38.45],[-8.8,38.0],[-8.85,37.5],[-8.99,37.02],[-8.6,37.1],[-7.9,37.0],[-7.4,37.18],[-6.9,37.2],[-6.4,36.8],[-6.3,36.5],[-6.0,36.2],[-5.6,36.05],[-5.35,36.18],[-4.9,36.5],[-4.4,36.72],[-3.5,36.72],
@@ -427,14 +446,31 @@ const ISLANDS = {
   Cyprus: [[32.3,34.8],[32.4,35.1],[32.9,35.2],[34.0,35.4],[34.6,35.7],[34.0,35.0],[33.6,34.8],[32.8,34.6]],
 };
 
-const LAND_POLYS = [MAIN_COAST, ...Object.values(ISLANDS)].map(poly => {
-  const pts = poly.map(([lo, la]) => proj(lo, la));
+// ---------------- Navigable rivers (lon, lat), from the sea upstream ----------------
+const RIVERS = [
+  { id: 'nile', name: 'Nile', current: 1.6, pts: [[30.4, 31.62], [30.42, 31.3], [30.6, 31.0], [30.85, 30.65], [31.05, 30.35], [31.2, 30.12], [31.24, 30.04]] },
+  { id: 'guadalquivir', name: 'Guadalquivir', current: 1.0, pts: [[-6.56, 36.79], [-6.33, 36.86], [-6.2, 37.0], [-6.08, 37.15], [-6.02, 37.28], [-5.99, 37.38]] },
+  { id: 'danube', name: 'Danube', current: 1.4, pts: [[29.92, 45.15], [29.5, 45.2], [29.0, 45.25], [28.5, 45.35], [28.05, 45.4], [27.95, 45.05], [27.85, 44.6], [27.5, 44.2], [27.0, 44.05], [26.5, 43.95], [25.97, 43.85]] },
+];
+const RIVER_W = 9; // channel width in nautical miles (exaggerated so ships can be seen on it)
+// The Nile valley continues far upstream as a green ribbon through the desert (not navigable here)
+const NILE_VALLEY = [[30.4, 31.5], [31.24, 30.04], [31.2, 29.0], [30.8, 28.0], [31.0, 27.2], [32.7, 25.7], [32.9, 24.1], [33.0, 22.0], [31.0, 21.0], [30.5, 19.5], [32.5, 15.6]];
+const LAND_POLYS = [MAIN_COAST, ...Object.values(ISLANDS)].map(poly => makePoly(poly, 'med'));
+function makePoly(poly, th, isVoid) {
+  const pts = isVoid ? poly : poly.map(([lo, la]) => proj(lo, la, th));
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
-  return { pts, x0, y0, x1, y1 };
-});
+  return { pts, x0, y0, x1, y1, th, void: !!isVoid };
+}
 
-function isLandExact(x, y) {
+let RIVER_SEGS = null;
+function riverSegs() {
+  if (!RIVER_SEGS) { RIVER_SEGS = []; for (const r of RIVERS) { const p = r.pts.map(([lo, la]) => proj(lo, la)); for (let i = 1; i < p.length; i++) RIVER_SEGS.push({ r, ax: p[i - 1][0], ay: p[i - 1][1], bx: p[i][0], by: p[i][1] }); } }
+  return RIVER_SEGS;
+}
+function segDist(x, y, s) { const dx = s.bx - s.ax, dy = s.by - s.ay, L2 = dx * dx + dy * dy, t = Math.max(0, Math.min(1, ((x - s.ax) * dx + (y - s.ay) * dy) / L2)); return Math.hypot(x - s.ax - dx * t, y - s.ay - dy * t); }
+function inRiverChannel(x, y) { for (const s of riverSegs()) if (segDist(x, y, s) <= RIVER_W / 2) return s; return null; }
+function isLandPoly(x, y) {
   if (x < 0 || y < 0 || x > WORLD_W || y > WORLD_H) return true;
   for (const p of LAND_POLYS) {
     if (x < p.x0 || x > p.x1 || y < p.y0 || y > p.y1) continue;
@@ -448,6 +484,7 @@ function isLandExact(x, y) {
   }
   return false;
 }
+function isLandExact(x, y) { return isLandPoly(x, y) && !inRiverChannel(x, y); }
 let isLand = isLandExact;
 function setLandTest(fn) { isLand = fn; }
 
@@ -503,16 +540,16 @@ const REGIONS = [
   { id: 'capeverde',  name: 'Cape Verde',          lon: -23.0,lat: 15.5, r: 300, base: 0 },
   { id: 'guinea',     name: 'Gulf of Guinea',      lon: -6.0, lat: 6.0,  r: 600, base: 1 },
 ];
-for (const r of REGIONS) [r.x, r.y] = proj(r.lon, r.lat);
-const unproj = (x, y) => [x / KX + LON0, LAT0 - y / KY];
+for (const r of REGIONS) [r.x, r.y] = proj(r.lon, r.lat, r.th || 'med');
+const unproj = (x, y) => { const T = THEATRES[theatreAtX(x) || 'med']; return [(x - T.ox) / T.kx + T.lon0, T.lat0 - (y - T.oy) / KY]; };
 const BOSPORUS_LAT = 41.13;
-function inOcean(x, y) { return unproj(x, y)[0] < -5.9; }
-function inBlackSea(x, y) { const [lo, la] = unproj(x, y); return lo > 29.3 ? la > 40.85 : (la > BOSPORUS_LAT && lo > 27.3); }
+function inOcean(x, y) { return theatreAtX(x) === 'med' && unproj(x, y)[0] < -5.9; }
+function inBlackSea(x, y) { if (theatreAtX(x) !== 'med') return false; const [lo, la] = unproj(x, y); if (la > 43.5 && lo > 25.5 && lo < 30.2 && la < 45.6) return true; return lo > 29.3 ? la > 40.85 : (la > BOSPORUS_LAT && lo > 27.3); }
 function regionAt(x, y) {
   if (inBlackSea(x, y)) return REGIONS.find(r => r.id === 'euxine');
   let best = REGIONS[0], bd = Infinity;
   for (const r of REGIONS) {
-    if (r.id === 'euxine') continue; const d = Math.hypot(r.x - x, r.y - y); if (d < bd) { bd = d; best = r; } }
+    if (r.id === 'euxine' || (r.th || 'med') !== (theatreAtX(x) || 'med')) continue; const d = Math.hypot(r.x - x, r.y - y); if (d < bd) { bd = d; best = r; } }
   return best;
 }
 
@@ -631,6 +668,10 @@ const PORTS = [
   { id:'caffa',     name:'Caffa',          lon:35.38, lat:45.03, f:'ottoman', cheap:['fish','furs'],         dear:['cloth','wine','spices'], yard:1, bs:1 },
   { id:'sinop',     name:'Sinop',          lon:35.15, lat:42.02, f:'ottoman', cheap:['timber'],              dear:['grain','cloth'], yard:1, bs:1 },
   { id:'trebizond', name:'Trebizond',      lon:39.72, lat:41.00, f:'ottoman', cheap:['silk','wax'],          dear:['salt','cloth','fish'], yard:0, bs:1 },
+  // ---- river ports ----
+  { id:'seville',   name:'Seville',        lon:-5.99, lat:37.38, f:'spain',   cheap:['oil','wine'],          dear:['cloth','timber','spices','grain'], yard:2, river:'guadalquivir', w:[-5.99,37.38] },
+  { id:'cairo',     name:'Cairo',          lon:31.24, lat:30.04, f:'ottoman', cheap:['spices','sugar','grain'], dear:['timber','cloth','alum','furs'], yard:1, river:'nile', w:[31.24,30.04] },
+  { id:'ruscuk',    name:'Rusçuk',         lon:25.97, lat:43.85, f:'ottoman', cheap:['grain','wax','timber'], dear:['salt','cloth','wine'], yard:0, river:'danube', bs:1, w:[25.97,43.85] },
   { id:'algiers',   name:'Algiers',        lon:3.05,  lat:36.76, f:'barbary', cheap:['grain'],               dear:['timber','cloth','wine'], yard:2 },
 ];
 
@@ -650,6 +691,9 @@ const SEA_WAYPOINTS = [
   [-16.0,33.2],[-17.0,32.3],[-13.5,32.5],[-12.0,34.5],[-14.0,35.8],[-17.0,36.5],[-20.0,37.0],[-23.0,37.4],[-24.5,38.3],[-25.5,37.4],[-26.5,38.3],[-27.2,38.3],
   [-22.0,34.0],[-19.0,30.0],[-20.0,26.0],[-21.0,22.0],[-22.5,18.2],[-23.0,15.5],[-24.0,14.4],[-21.5,17.0],[-25.2,16.4],[-24.9,15.6],[-20.0,12.0],[-18.0,8.0],[-14.0,5.5],[-11.0,4.6],
   [-12.0,38.0],[-15.0,40.0],[-11.0,42.0],[-12.0,45.0],[-7.0,46.0],[-4.0,46.5],[-1.7,45.95],[-25.0,30.0],[-26.0,22.0],[-25.0,10.0],
+  [30.42,31.3],[30.6,31.0],[30.85,30.65],[31.05,30.35],[31.2,30.12],
+  [-6.33,36.86],[-6.2,37.0],[-6.08,37.15],[-6.02,37.28],
+  [29.5,45.2],[29.0,45.25],[28.5,45.35],[28.05,45.4],[27.95,45.05],[27.85,44.6],[27.5,44.2],[27.0,44.05],[26.5,43.95],
   [29.1,41.08],[29.1,41.22],[29.15,41.45],[28.7,42.2],[28.6,43.0],[29.3,43.9],[30.0,44.6],[30.7,45.6],[31.3,46.25],[32.4,45.8],[32.4,45.0],[33.3,44.3],[34.5,44.1],[35.6,44.6],[36.6,44.8],[37.6,44.2],[38.8,43.5],[40.0,42.8],[40.9,42.2],[40.5,41.5],[39.0,41.4],[37.5,41.6],[36.3,41.9],[35.2,42.5],[33.5,42.4],[31.8,41.7],[30.4,41.5],[30.5,42.8],[32.5,43.5],[34.6,43.4],[36.5,43.6],[38.6,42.6],[30.6,44.2],[32.0,44.8]
 ];
 
@@ -676,15 +720,15 @@ const GRAPH = { nodes: [], edges: [] };
 function buildGraph() {
   GRAPH.nodes = []; GRAPH.edges = [];
   for (const p of PORTS) {
-    const [x, y] = proj(p.lon, p.lat);
+    const [x, y] = proj(p.lon, p.lat, p.th || 'med');
     p.x = x; p.y = y;
-    const [wx, wy] = p.w ? proj(p.w[0], p.w[1]) : findWaterNear(x, y);
+    const [wx, wy] = p.w ? proj(p.w[0], p.w[1], p.th || 'med') : findWaterNear(x, y);
     p.wx = wx; p.wy = wy;
     p.node = GRAPH.nodes.length;
     GRAPH.nodes.push({ x: wx, y: wy, port: p.id });
   }
-  for (const [lo, la] of SEA_WAYPOINTS) {
-    const [x, y] = proj(lo, la);
+  for (const [lo, la, th] of SEA_WAYPOINTS) {
+    const [x, y] = proj(lo, la, th || 'med');
     if (!clearAt(x, y, 3)) continue;
     GRAPH.nodes.push({ x, y });
   }
@@ -736,7 +780,148 @@ function routeTo(x, y, portIdx) {
   return { pts, length: len };
 }
 
-if (typeof module !== 'undefined') module.exports = { inOcean, inBlackSea, unproj,  proj, WORLD_W, WORLD_H, LAND_POLYS, isLandExact, PORTS, SEA_WAYPOINTS, GRAPH, buildGraph, shortestPath, routeTo, clearAt };
+
+// ================= THE INDIES (Caribbean) and THE ARABIAN SEA, c. 1565 =================
+const CARIB_MAIN = [
+  [-81.4, 31], [-81.3, 30.3], [-81.0, 29.2], [-80.6, 28.3], [-80.1, 26.9], [-80.1, 25.8], [-80.4, 25.2], [-81.1, 25.1], [-81.7, 25.9], [-82.0, 26.5], [-82.7, 27.5], [-82.8, 28.2],
+  [-82.7, 29.0], [-83.6, 29.8], [-84.4, 30.0], [-85.4, 29.7], [-86.5, 30.4], [-88.0, 30.6], [-89.4, 30.2], [-89.3, 29.3], [-89.0, 29.1], [-90.0, 29.1], [-91.5, 29.4], [-93.5, 29.7],
+  [-94.8, 29.3], [-96.4, 28.4], [-97.3, 27.6], [-97.4, 26.0], [-97.6, 24.5], [-97.7, 22.5], [-97.3, 21.0], [-96.4, 19.6], [-96.1, 19.2], [-95.2, 18.7], [-94.5, 18.1], [-93.0, 18.4],
+  [-91.8, 18.6], [-91.0, 19.0], [-90.6, 19.9], [-90.3, 21.0], [-89.5, 21.3], [-88.0, 21.5], [-87.0, 21.5], [-86.8, 21.1], [-87.4, 20.2], [-87.6, 19.5], [-87.8, 18.4], [-88.3, 17.6],
+  [-88.3, 16.5], [-88.9, 15.9], [-88.2, 15.7], [-87.5, 15.8], [-86.0, 15.9], [-84.3, 15.8], [-83.4, 15.2], [-83.2, 14.0], [-83.5, 12.4], [-83.7, 11.0], [-83.0, 10.0], [-82.2, 9.0],
+  [-81.4, 8.8], [-80.4, 9.2], [-79.6, 9.6], [-78.5, 9.4], [-77.4, 8.6], [-76.8, 8.2], [-76.3, 9.4], [-75.6, 10.4], [-74.8, 11.0], [-74.2, 11.3], [-73.4, 11.3], [-72.9, 11.6],
+  [-72.0, 12.2], [-71.5, 12.4], [-71.2, 11.6], [-70.2, 11.6], [-69.8, 11.9], [-69.0, 11.5], [-68.2, 10.8], [-67.0, 10.6], [-65.8, 10.2], [-64.5, 10.3], [-63.8, 10.7], [-62.3, 10.7],
+  [-62.0, 10.1], [-61.0, 9.6], [-60.0, 8.6], [-58.8, 8.0], [-58, 7.6], [-58, 7], [-98, 7], [-98, 31],
+];
+const CARIB_ISLANDS = {
+  Cuba: [[-84.95, 21.85], [-84.0, 22.75], [-83.0, 23.0], [-82.3, 23.15], [-81.5, 23.15], [-80.5, 22.95], [-79.5, 22.4], [-78.4, 22.4], [-77.4, 21.9], [-76.0, 21.15], [-75.6, 20.75],
+    [-74.15, 20.25], [-74.5, 20.05], [-75.8, 19.95], [-77.0, 19.85], [-77.7, 19.85], [-77.3, 20.6], [-78.1, 20.75], [-79.0, 21.6], [-80.4, 21.8], [-81.2, 22.1], [-82.1, 22.3], [-82.8, 22.0], [-83.4, 22.2], [-84.4, 21.9]],
+  Hispaniola: [[-74.45, 18.4], [-73.4, 19.8], [-72.8, 19.9], [-71.7, 19.85], [-70.5, 19.8], [-69.9, 19.65], [-69.2, 19.2], [-68.35, 18.6], [-68.7, 18.2], [-69.9, 18.42], [-70.5, 18.2],
+    [-71.3, 17.6], [-71.8, 18.2], [-72.8, 18.15], [-73.8, 18.05], [-74.4, 18.3]],
+  Jamaica: [[-78.35, 18.3], [-77.5, 18.5], [-76.3, 18.2], [-76.2, 17.9], [-76.9, 17.85], [-77.8, 17.85], [-78.35, 18.2]],
+  PuertoRico: [[-67.25, 18.5], [-66.0, 18.44], [-65.6, 18.3], [-65.85, 18.0], [-67.2, 17.95]],
+  Guadeloupe: [[-61.6, 16.25], [-61.2, 16.4], [-61.5, 15.95]], Dominica: [[-61.45, 15.6], [-61.25, 15.6], [-61.35, 15.2]], Martinique: [[-61.2, 14.85], [-60.85, 14.75], [-61.05, 14.4]],
+  Barbados: [[-59.65, 13.3], [-59.45, 13.2], [-59.55, 13.05]], Trinidad: [[-61.9, 10.8], [-60.95, 10.85], [-61.0, 10.1], [-61.9, 10.05]],
+  Margarita: [[-64.4, 11.15], [-63.8, 11.15], [-63.85, 10.92], [-64.35, 10.95]],
+  Andros: [[-78.2, 25.1], [-77.7, 24.7], [-78.0, 24.1]], GrandBahama: [[-78.9, 26.75], [-78.0, 26.7], [-78.6, 26.5]], Eleuthera: [[-76.6, 25.5], [-76.2, 25.0], [-76.2, 24.6]],
+};
+const INDIAN_MAIN = [
+  [31, 32], [80, 32], [80, 15.5], [80, 10.3], [79.85, 10.3], [79.3, 9.3], [78.2, 8.9], [77.5, 8.1], [77.0, 8.3], [76.5, 9.2], [76.25, 9.95], [75.8, 11.2], [75.2, 12.5], [74.8, 13.4],
+  [74.4, 14.5], [73.95, 15.4], [73.2, 17.0], [72.85, 18.9], [72.7, 20.0], [72.6, 21.1], [72.8, 21.2], [72.6, 22.2], [72.3, 21.6], [72.2, 21.1], [71.4, 20.75], [70.0, 21.0],
+  [69.0, 22.3], [68.4, 23.5], [67.4, 24.0], [67.0, 24.8], [66.5, 25.4], [64.5, 25.2], [62.0, 25.1], [61.5, 25.15], [59.5, 25.5], [58.0, 25.6], [57.3, 25.9], [56.9, 26.8], [56.3, 27.2],
+  [55.0, 26.7], [54.0, 26.7], [52.6, 27.4], [51.4, 28.0], [50.8, 28.9], [50.3, 29.6], [49.5, 30.0], [48.8, 30.0], [48.0, 29.9], [47.9, 29.4], [48.4, 28.5], [49.2, 27.2], [50.1, 26.4],
+  [50.6, 25.8], [51.2, 26.15], [51.6, 25.3], [51.4, 24.6], [52.5, 24.2], [54.0, 24.1], [55.3, 25.3], [56.1, 26.2], [56.4, 26.4], [56.4, 25.4], [56.6, 24.4], [57.8, 23.8], [58.6, 23.6],
+  [59.8, 22.4], [59.0, 20.6], [58.4, 20.4], [57.8, 19.0], [56.8, 18.3], [55.4, 17.8], [54.1, 17.0], [52.2, 15.6], [50.5, 15.0], [49.0, 14.5], [48.0, 14.0], [46.0, 13.4], [45.0, 12.8],
+  [43.5, 12.7], [43.3, 13.3], [42.8, 14.8], [42.7, 15.7], [42.6, 16.9], [41.8, 18.6], [40.8, 19.8], [39.6, 21.3], [38.6, 23.5], [37.4, 25.0], [36.5, 26.5], [35.6, 27.9], [34.95, 29.45],
+  [34.5, 28.2], [34.25, 27.75], [33.6, 28.25], [33.15, 28.9], [32.7, 29.6], [32.6, 29.98], [32.45, 29.98], [32.35, 29.55], [32.65, 29.1], [33.1, 28.35], [33.8, 27.25], [34.6, 25.8], [35.6, 24.0], [36.9, 22.0], [37.3, 20.5],
+  [37.33, 19.1], [38.5, 18.0], [39.4, 15.9], [40.6, 14.6], [41.7, 13.4], [43.2, 12.4], [43.1, 11.6], [44.5, 10.4], [45.6, 10.7], [47.5, 11.1], [49.5, 11.3], [51.2, 11.8], [51.2, 10.4],
+  [50.8, 9.0], [49.8, 7.5], [48.5, 5.5], [47.0, 3.5], [45.3, 2.0], [44.0, 1.0], [42.6, -0.5], [41.5, -1.8], [40.4, -2.6], [40.1, -3.2], [39.7, -4.0], [39.2, -4.8], [38.9, -5.6],
+  [38.8, -6.4], [39.3, -7.6], [39.5, -8.9], [40.0, -9.6], [40.3, -10], [31, -10],
+];
+const INDIAN_ISLANDS = {
+  Socotra: [[53.3, 12.7], [54.5, 12.6], [54.0, 12.35], [53.3, 12.5]], Ceylon: [[79.7, 9.6], [80, 9.8], [80, 5.9], [79.85, 6.6], [79.8, 8.0]],
+  Hormuz: [[56.38, 27.12], [56.52, 27.12], [56.5, 27.0], [56.4, 27.0]], Bahrain: [[50.45, 26.25], [50.65, 26.25], [50.6, 25.8], [50.45, 25.9]],
+  Zanzibar: [[39.2, -5.7], [39.55, -6.2], [39.3, -6.45], [39.15, -6.0]], Pemba: [[39.7, -4.9], [39.85, -5.4], [39.65, -5.45]],
+};
+for (const p of [CARIB_MAIN, ...Object.values(CARIB_ISLANDS)]) LAND_POLYS.push(makePoly(p, 'carib'));
+for (const p of [INDIAN_MAIN, ...Object.values(INDIAN_ISLANDS)]) LAND_POLYS.push(makePoly(p, 'indian'));
+// uncharted land between and below the charts, so no ship can sail from one to another
+(() => {
+  const rect = (x0, y0, x1, y1) => LAND_POLYS.push(makePoly([[x0, y0], [x1, y0], [x1, y1], [x0, y1]], null, true));
+  for (const k of THEATRE_KEYS) { const T = THEATRES[k]; rect(T.ox + T.w, -10, T.ox + T.w + 600, WORLD_H + 10); if (T.h < WORLD_H) rect(T.ox, T.h, T.ox + T.w, WORLD_H + 10); }
+})();
+
+Object.assign(FACTIONS, {
+  england: { name: 'Kingdom of England', adj: 'English', color: '#e8e4dc', ruler: 'Queen Elizabeth I' },
+  gujarat: { name: 'Sultanate of Gujarat', adj: 'Gujarati', color: '#d4573b', ruler: 'Sultan Muzaffar Shah III' },
+  mughal:  { name: 'Mughal Empire', adj: 'Mughal', color: '#2f8f5b', ruler: 'Emperor Akbar' },
+  calicut: { name: 'Zamorin of Calicut', adj: 'Malabari', color: '#c9862b', ruler: 'the Zamorin' },
+  swahili: { name: 'Swahili Cities', adj: 'Swahili', color: '#9a3b3b', ruler: 'the Sultan of Mombasa' },
+});
+NATIONS.push('england', 'gujarat', 'mughal', 'calicut', 'swahili');
+WARS.push(['portugal', 'calicut'], ['portugal', 'ottoman'], ['portugal', 'swahili']);
+ALLIES.push(['calicut', 'ottoman']);
+Object.assign(GOODS, {
+  silver:    { name: 'Silver',      unit: 'bar',    base: 260 },
+  hides:     { name: 'Hides',       unit: 'bale',   base: 22 },
+  cochineal: { name: 'Cochineal',   unit: 'arroba', base: 210 },
+  pearls:    { name: 'Pearls',      unit: 'string', base: 300 },
+  logwood:   { name: 'Logwood',     unit: 'load',   base: 30 },
+  coffee:    { name: 'Coffee',      unit: 'bahar',  base: 70 },
+  horses:    { name: 'Horses',      unit: 'head',   base: 240 },
+  calico:    { name: 'Calico',      unit: 'bale',   base: 40 },
+  cinnamon:  { name: 'Cinnamon',    unit: 'bahar',  base: 160 },
+  incense:   { name: 'Frankincense', unit: 'bahar', base: 90 },
+});
+GOOD_KEYS.push('silver', 'hides', 'cochineal', 'pearls', 'logwood', 'coffee', 'horses', 'calico', 'cinnamon', 'incense');
+SHIPS.dhow = { name: 'Dhow', rig: 'lateen', hull: 60, hold: 80, crewMax: 30, crewMin: 10, guns: 2, speed: 7.6, oars: 0, price: 1800, theatres: ['indian'],
+  note: 'A sewn-plank trading vessel of the Arabian Sea, built to run before the monsoon.' };
+// demand for the new goods back home
+for (const [id, add] of [['venice', ['cochineal', 'pearls', 'cinnamon', 'calico']], ['genoa', ['silver', 'cochineal']], ['istanbul', ['silver', 'coffee', 'calico']], ['cairo', ['coffee', 'incense']],
+  ['marseille', ['hides', 'cochineal']], ['lisbon', ['cinnamon', 'pearls']], ['seville', ['hides', 'cochineal', 'silver']], ['alexandria', ['incense', 'calico']], ['naples', ['silver']],
+  ['barcelona', ['hides', 'logwood']], ['ragusa', ['silver']], ['smyrna', ['coffee']]]) { const p = PORTS.find(q => q.id === id); if (p) p.dear.push(...add.filter(g => !p.dear.includes(g))); }
+PORTS.push(
+  // ---- the Indies ----
+  { id:'havana',     th:'carib', name:'Havana',          lon:-82.36, lat:23.14, f:'spain',    cheap:['hides','sugar'],      dear:['wine','oil','cloth','timber'], yard:2, w:[-82.38,23.25] },
+  { id:'santiago',   th:'carib', name:'Santiago de Cuba', lon:-75.83, lat:20.0, f:'spain',    cheap:['hides'],              dear:['wine','cloth','grain'], yard:0 },
+  { id:'sdomingo',   th:'carib', name:'Santo Domingo',   lon:-69.9, lat:18.47, f:'spain',     cheap:['sugar','hides'],      dear:['wine','oil','cloth'], yard:1 },
+  { id:'sanjuan',    th:'carib', name:'San Juan',        lon:-66.1, lat:18.44, f:'spain',     cheap:['sugar'],              dear:['wine','cloth','grain'], yard:0 },
+  { id:'cartagena_i',th:'carib', name:'Cartagena de Indias', lon:-75.55, lat:10.42, f:'spain', cheap:['silver','hides'],    dear:['wine','oil','cloth','grain'], yard:1 },
+  { id:'nombre',     th:'carib', name:'Nombre de Dios',  lon:-79.47, lat:9.58, f:'spain',     cheap:['silver'],             dear:['wine','oil','cloth','grain'], yard:0 },
+  { id:'veracruz',   th:'carib', name:'Veracruz',        lon:-96.13, lat:19.2, f:'spain',     cheap:['silver','cochineal'], dear:['wine','oil','cloth'], yard:0 },
+  { id:'campeche',   th:'carib', name:'Campeche',        lon:-90.53, lat:19.85, f:'spain',    cheap:['logwood'],            dear:['wine','cloth'], yard:0 },
+  { id:'riohacha',   th:'carib', name:'Río de la Hacha', lon:-72.9, lat:11.55, f:'spain',     cheap:['pearls'],             dear:['wine','cloth','grain'], yard:0 },
+  { id:'margarita',  th:'carib', name:'Margarita',       lon:-63.9, lat:10.95, f:'spain',     cheap:['pearls','salt'],      dear:['wine','grain','cloth'], yard:0, w:[-63.9,10.8] },
+  { id:'jamaica',    th:'carib', name:'Villa de la Vega', lon:-76.95, lat:17.98, f:'spain',   cheap:['hides'],              dear:['wine','cloth'], yard:0 },
+  { id:'caroline',   th:'carib', name:'Fort Caroline',   lon:-81.5, lat:30.39, f:'huguenot',  cheap:['hides'],              dear:['wine','grain','cloth','timber'], yard:0 },
+  // ---- the Arabian Sea ----
+  { id:'suez',       th:'indian', name:'Suez',      lon:32.55, lat:29.95, f:'ottoman', cheap:['timber'],                dear:['spices','calico','coffee','grain'], yard:1, w:[32.52,29.75] },
+  { id:'jeddah',     th:'indian', name:'Jeddah',    lon:39.17, lat:21.48, f:'ottoman', cheap:['coffee'],                dear:['grain','calico','spices'], yard:0 },
+  { id:'mocha',      th:'indian', name:'Mocha',     lon:43.25, lat:13.32, f:'ottoman', cheap:['coffee'],                dear:['calico','grain','silver'], yard:0 },
+  { id:'aden',       th:'indian', name:'Aden',      lon:45.03, lat:12.78, f:'ottoman', cheap:['incense'],               dear:['calico','grain','spices'], yard:0 },
+  { id:'basra',      th:'indian', name:'Basra',     lon:48.0, lat:29.95, f:'ottoman',  cheap:['silk','horses'],         dear:['spices','calico','sugar'], yard:0, w:[48.3,29.75] },
+  { id:'hormuz',     th:'indian', name:'Hormuz',    lon:56.45, lat:27.08, f:'portugal', cheap:['horses','pearls','silk'], dear:['spices','cinnamon','calico','silver'], yard:1 },
+  { id:'muscat',     th:'indian', name:'Muscat',    lon:58.58, lat:23.62, f:'portugal', cheap:['horses','incense'],     dear:['calico','grain','spices'], yard:0 },
+  { id:'diu',        th:'indian', name:'Diu',       lon:70.98, lat:20.71, f:'portugal', cheap:['calico'],               dear:['horses','silver','coffee'], yard:1 },
+  { id:'surat',      th:'indian', name:'Surat',     lon:72.83, lat:21.17, f:'gujarat',  cheap:['calico','silk'],         dear:['horses','silver','pearls','coffee'], yard:1, w:[72.45,21.0] },
+  { id:'goa',        th:'indian', name:'Goa',       lon:73.83, lat:15.5,  f:'portugal', cheap:['spices'],               dear:['horses','silver','wine','cloth'], yard:2, malabar:1 },
+  { id:'calicut',    th:'indian', name:'Calicut',   lon:75.78, lat:11.25, f:'calicut',  cheap:['spices','calico'],      dear:['horses','silver','coffee'], yard:0, malabar:1 },
+  { id:'cochin',     th:'indian', name:'Cochin',    lon:76.24, lat:9.96,  f:'portugal', cheap:['spices'],               dear:['horses','silver','cloth'], yard:1, malabar:1 },
+  { id:'colombo',    th:'indian', name:'Colombo',   lon:79.85, lat:6.93,  f:'portugal', cheap:['cinnamon','pearls'],    dear:['calico','silver','grain'], yard:0 },
+  { id:'mogadishu',  th:'indian', name:'Mogadishu', lon:45.34, lat:2.04,  f:'swahili',  cheap:['incense','ivory'],      dear:['calico','spices'], yard:0 },
+  { id:'malindi',    th:'indian', name:'Malindi',   lon:40.12, lat:-3.22, f:'portugal', cheap:['ivory'],                dear:['calico','spices','silver'], yard:0 },
+  { id:'mombasa',    th:'indian', name:'Mombasa',   lon:39.67, lat:-4.05, f:'swahili',  cheap:['ivory','gold'],         dear:['calico','silver','spices'], yard:0 },
+  { id:'zanzibar',   th:'indian', name:'Zanzibar',  lon:39.19, lat:-6.16, f:'swahili',  cheap:['ivory','spices'],       dear:['calico','silver'], yard:0, w:[39.05,-6.16] },
+);
+SEA_WAYPOINTS.push(...[
+  [-79.5, 27.5], [-79.8, 25.6], [-81.5, 24.4], [-83.5, 23.6], [-85.5, 22.5], [-87.0, 23.5], [-89.0, 25.5], [-92.0, 26.5], [-95.0, 25.0], [-95.5, 21.5], [-93.0, 20.5], [-90.8, 20.5], [-86.0, 20.5],
+  [-84.5, 19.5], [-82.0, 20.6], [-81.0, 18.5], [-78.5, 17.0], [-75.5, 19.0], [-73.0, 21.5], [-71.0, 20.6], [-68.5, 19.6], [-67.5, 18.0], [-65.5, 17.0], [-63.0, 16.5], [-61.0, 17.5],
+  [-59.6, 15.0], [-60.4, 12.5], [-62.5, 12.0], [-65.0, 11.8], [-67.5, 11.6], [-70.0, 12.8], [-72.5, 13.0], [-75.0, 12.2], [-77.0, 11.0], [-79.0, 10.4], [-81.5, 10.2], [-82.5, 12.5],
+  [-81.0, 15.0], [-84.5, 16.5], [-86.5, 17.0], [-77.0, 14.5], [-72.0, 16.0], [-68.0, 14.5], [-64.0, 14.0], [-78.0, 23.0], [-76.0, 23.5], [-74.5, 22.5], [-79.8, 30.0], [-80.2, 28.5],
+  [-60.0, 20.0], [-62.0, 24.0], [-66.0, 22.0], [-70.0, 25.0],
+].map(([a, b]) => [a, b, 'carib']), ...[
+  [32.88, 29.05], [33.35, 28.35], [33.95, 27.6], [32.55, 29.6], [34.8, 26.0], [36.0, 24.0], [37.2, 22.0], [38.0, 20.5], [39.5, 18.5], [40.5, 16.5], [41.5, 15.0], [42.6, 13.6], [43.6, 12.4], [45.5, 12.2], [48.0, 12.8],
+  [51.0, 13.0], [52.5, 14.0], [55.0, 15.5], [57.5, 17.5], [59.8, 19.5], [61.0, 22.0], [59.3, 23.6], [57.3, 25.0], [56.6, 26.4], [55.0, 26.0], [53.0, 26.4], [51.5, 27.4], [50.2, 28.6],
+  [49.0, 29.4], [52.5, 25.4], [62.0, 24.5], [65.5, 24.0], [68.0, 22.5], [69.5, 20.6], [71.6, 20.0], [72.4, 20.6], [72.2, 18.5], [72.6, 16.8], [73.3, 15.2], [74.0, 13.5], [74.8, 11.8], [75.6, 10.2],
+  [76.4, 8.4], [78.0, 7.6], [79.4, 6.4], [77.5, 5.0], [72.0, 10.0], [67.0, 15.0], [62.0, 17.0], [65.0, 20.0], [55.0, 12.5], [52.0, 10.0], [51.8, 11.5], [55.0, 8.0], [50.0, 5.0], [47.5, 2.2],
+  [44.5, 0.0], [42.5, -2.0], [40.7, -3.5], [40.2, -4.6], [39.6, -5.6], [39.9, -7.5], [40.6, -9.0], [45.0, -5.0], [55.0, 0.0], [60.0, 8.0], [70.0, 4.0], [75.0, -2.0],
+].map(([a, b]) => [a, b, 'indian']));
+REGIONS.push(
+  { id: 'gulfmexico', th: 'carib', name: 'Gulf of Mexico', lon: -91, lat: 24.5, r: 380, base: 0 },
+  { id: 'florida', th: 'carib', name: 'Florida Strait', lon: -80, lat: 26.5, r: 260, base: 1 },
+  { id: 'antilles', th: 'carib', name: 'Greater Antilles', lon: -74, lat: 19.5, r: 330, base: 0 },
+  { id: 'lesser', th: 'carib', name: 'Lesser Antilles', lon: -61.5, lat: 15.5, r: 280, base: 1 },
+  { id: 'main', th: 'carib', name: 'Spanish Main', lon: -72, lat: 11.8, r: 420, base: 1 },
+  { id: 'redsea', th: 'indian', name: 'Red Sea', lon: 37.5, lat: 21.5, r: 520, base: 0 },
+  { id: 'adengulf', th: 'indian', name: 'Gulf of Aden', lon: 48.5, lat: 12.5, r: 300, base: 1 },
+  { id: 'persgulf', th: 'indian', name: 'Persian Gulf', lon: 52, lat: 26.8, r: 330, base: 0 },
+  { id: 'arabsea', th: 'indian', name: 'Arabian Sea', lon: 63, lat: 17, r: 600, base: 0 },
+  { id: 'malabar', th: 'indian', name: 'Malabar Coast', lon: 75, lat: 11, r: 330, base: 1 },
+  { id: 'gujaratc', th: 'indian', name: 'Gulf of Cambay', lon: 70.5, lat: 21, r: 260, base: 0 },
+  { id: 'zanj', th: 'indian', name: 'Swahili Coast', lon: 42, lat: -3, r: 500, base: 0 },
+);
+for (const r of REGIONS) [r.x, r.y] = proj(r.lon, r.lat, r.th || 'med');
+
+if (typeof module !== 'undefined') module.exports = { THEATRES, theatreAtX, RIVERS, inRiverChannel, isLandPoly, inOcean, inBlackSea, unproj,  proj, WORLD_W, WORLD_H, LAND_POLYS, isLandExact, PORTS, SEA_WAYPOINTS, GRAPH, buildGraph, shortestPath, routeTo, clearAt };
 
 // ================= PORTOLAN 1565 — game =================
 'use strict';
@@ -759,18 +944,33 @@ const WIND_NAMES = ['Tramontana','Greco','Levante','Scirocco','Ostro','Libeccio'
 const WIND_DIRS = ['N','NE','E','SE','S','SW','W','NW'];
 
 // ---------- land raster for fast collision ----------
+const GRIDS = {};
 function buildRaster() {
   try {
-    const R = 1.25, w = Math.ceil(WORLD_W / R), h = Math.ceil(WORLD_H / R);
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    const g = c.getContext('2d');
-    g.scale(1 / R, 1 / R); g.fillStyle = '#000';
-    for (const p of LAND_POLYS) { g.beginPath(); p.pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill(); }
-    const d = g.getImageData(0, 0, w, h).data, grid = new Uint8Array(w * h);
-    for (let i = 0; i < w * h; i++) grid[i] = d[i * 4 + 3] > 110 ? 1 : 0;
-    setLandTest((x, y) => (x < 0 || y < 0 || x >= WORLD_W || y >= WORLD_H) ? true : grid[((y / R) | 0) * w + ((x / R) | 0)] === 1);
+    const R = 1.25;
+    for (const k of THEATRE_KEYS) {
+      const T = THEATRES[k], w = Math.ceil(T.w / R), h = Math.ceil(T.h / R);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const g = c.getContext('2d');
+      g.scale(1 / R, 1 / R); g.translate(-T.ox, -T.oy); g.fillStyle = '#000';
+      for (const p of LAND_POLYS) { if (p.th !== k) continue; g.beginPath(); p.pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill(); }
+      if (k === 'med') { g.globalCompositeOperation = 'destination-out'; g.lineWidth = RIVER_W; g.lineCap = 'round'; g.lineJoin = 'round'; for (const r of RIVERS) { g.beginPath(); r.pts.forEach(([lo, la], i) => { const [x, y] = proj(lo, la); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); } g.globalCompositeOperation = 'source-over'; }
+      const d = g.getImageData(0, 0, w, h).data, grid = new Uint8Array(w * h);
+      for (let i = 0; i < w * h; i++) grid[i] = d[i * 4 + 3] > 110 ? 1 : 0;
+      GRIDS[k] = { grid, w, T };
+    }
+    setLandTest((x, y) => {
+      const k = theatreAtX(x); if (!k) return true;
+      const G = GRIDS[k], T = G.T, lx = x - T.ox, ly = y - T.oy;
+      if (lx < 0 || ly < 0 || lx >= T.w || ly >= T.h) return true;
+      return G.grid[((ly / R) | 0) * G.w + ((lx / R) | 0)] === 1;
+    });
   } catch (e) { /* fall back to exact polygon test */ }
 }
+const curTh = () => (S && S.theatre) || 'med';
+const TH = () => THEATRES[curTh()];
+const inTh = p => (p.th || 'med') === curTh();
+const TPORTS = () => PORTS.filter(inTh);
 
 // ---------- state ----------
 let S = null;          // persistent game state
@@ -807,6 +1007,11 @@ const RANKS = {
   portugal:['Fidalgo', 'Capitão de navio', 'Capitão-mor', 'Capitão de armada', 'Almirante da costa', 'Capitão-mor do Mar', 'Vice-almirante', 'Almirante de Portugal'],
   morocco: ['Ra\u2019is', 'Qa\u2019id', 'Kahya', 'Qa\u2019id of the Coast', 'Pasha', 'Amir al-Bahr of Salé', 'Amir al-Bahr', 'Grand Amir al-Bahr'],
   huguenot:['Volunteer', 'Capitaine', 'Capitaine de vaisseau', 'Chef d\u2019escadre', 'Vice-amiral', 'Lieutenant-général', 'Amiral protestant', 'Amiral de la Cause'],
+  england: ['Gentleman adventurer', 'Captain', 'Master and commander', 'Vice-admiral of the coast', 'Rear-admiral', 'Vice-admiral', 'Admiral of the Narrow Seas', 'Lord High Admiral'],
+  gujarat: ['Nakhuda', 'Malik', 'Khan', 'Amir', 'Malik al-Tujjar', 'Amir al-Bahr', 'Wazir', 'Khan-i Azam'],
+  mughal:  ['Ahadi', 'Mansabdar of 100', 'Mansabdar of 500', 'Mansabdar of 1,000', 'Khan', 'Amir', 'Khan-i Khanan', 'Mir Bahr'],
+  calicut: ['Nayar', 'Marakkar', 'Kunjali’s captain', 'Kunjali of the fleet', 'Kurup', 'Admiral', 'Kunjali Marakkar', 'Lord of the Sea'],
+  swahili: ['Nahodha', 'Mwinyi', 'Diwani', 'Amiri', 'Shaha', 'Waziri', 'Amiri wa bahari', 'Admiral of the coast'],
   crimea:  ['Kazak', 'Bahadır', 'Aga', 'Mirza', 'Murza of the Coast', 'Bey', 'Kalga\u2019s Admiral', 'Khan\u2019s Admiral'],
   _:       ['Midshipman', 'Lieutenant', 'Captain', 'Senior captain', 'Commodore', 'Rear admiral', 'Vice admiral', 'Admiral'],
 };
@@ -868,8 +1073,14 @@ const HISTORY = [
   [1576, 3, 15, 'Abd al-Malik takes Fez', 'With Ottoman help, Abd al-Malik seizes the Moroccan throne.', () => setRuler('morocco', 'Sultan Abd al-Malik'), 'morocco'],
   [1578, 8, 4, 'Disaster at Alcácer Quibir', 'King Sebastian falls with the flower of Portugal\u2019s nobility. Ahmad al-Mansur rules Morocco.', () => { setRuler('portugal', 'King Henry the Cardinal'); setRuler('morocco', 'Sultan Ahmad al-Mansur'); }, 'morocco'],
   [1580, 8, 25, 'Philip II takes Portugal', 'After Alcântara the King of Spain is King of Portugal. Portuguese harbours fly his flag.', () => { for (const p of PORTS) if (p.f0 === 'portugal') setOwner(p.id, 'spain'); setRuler('portugal', 'King Philip I'); addPair(POLITICS.allies, 'spain', 'portugal'); }, 'lusitania'],
+  [1565, 9, 20, 'Fort Caroline falls', 'Pedro Menéndez de Avilés storms the Huguenot fort in Florida and puts its garrison to the sword. It becomes Spanish San Mateo.', () => setOwner('caroline', 'spain'), 'florida'],
+  [1568, 9, 23, 'Treachery at San Juan de Ulúa', 'The Spanish fleet falls on John Hawkins at Veracruz. England and Spain will fight in the Indies.', () => addPair(POLITICS.wars, 'england', 'spain'), 'gulfmexico'],
+  [1570, 12, 15, 'Goa besieged', 'Bijapur and Ahmadnagar lay siege to Goa and Chaul. The Portuguese hold on.', () => regionEvent('malabar', dayOf(1571, 8, 30)), 'malabar'],
+  [1571, 9, 15, 'Chaliyam falls', 'The Zamorin’s army takes the Portuguese fort at Chaliyam, next to Calicut.', null, 'malabar'],
+  [1572, 7, 29, 'Drake at Nombre de Dios', 'Francis Drake raids Nombre de Dios with the help of the Cimarrones, escaped Africans who live free in the Panama forests.', () => regionEvent('main', dayOf(1573, 6, 1)), 'main'],
+  [1573, 2, 26, 'Akbar takes Surat', 'The Mughal emperor conquers Gujarat. Surat now pays its dues to Akbar.', () => setOwner('surat', 'mughal'), 'gujaratc'],
   [1577, 6, 29, 'A new Khan', 'Devlet Giray is dead. Mehmed II Giray rules the Crimea.', () => setRuler('crimea', 'Khan Mehmed II Giray'), 'euxine'],
-].map(([y, m, d, title, body, fx, region], i) => ({ id: 'h' + i, day: dayOf(y, m, d), title, body, fx, region }));
+].map(([y, m, d, title, body, fx, region]) => ({ id: 'H:' + title, day: dayOf(y, m, d), title, body, fx, region }));
 function regionEvent(region, until, risk = 1) { S.events.push({ k: 'war', region, start: dayIndex(), until, risk, hidden: true }); }
 function applyHistory(quiet) {
   for (const h of HISTORY) {
@@ -885,10 +1096,10 @@ function applyHistory(quiet) {
 const VOICE = { venice: 'Avvisi from the Rialto', spain: 'Avisos from the viceroy', ottoman: 'Word from the Divan', france: 'Letters from the consuls', genoa: 'Letters of San Giorgio', knights: 'Bulletins of the Order', barbary: 'Talk on the corsair mole', ragusa: 'Reports to the Rector' };
 function randomEvent() {
   const k = weighted([['raid', 30], ['rogue', ROGUES_ENABLED ? 18 : 0], ['plague', 10], ['famine', 14], ['glut', 16], ['fleet', 12]]);
-  const p = pick(PORTS.filter(q => !q.site)), reg = p.region, d = dayIndex();
+  const p = pick(TPORTS().filter(q => !q.site)), reg = p.region, d = dayIndex();
   let e = { k, port: p.id, region: reg, start: d, risk: 0 };
   if (k === 'raid') {
-    const rp = pick(PORTS.filter(q => REGIONS.find(r => r.id === q.region).base >= 1 || Math.random() < 0.3));
+    const rp = pick(TPORTS().filter(q => REGIONS.find(r => r.id === q.region).base >= 1 || Math.random() < 0.3)) || p;
     Object.assign(e, { port: rp.id, region: rp.region, until: d + randi(15, 30), risk: 1, title: `Corsairs off ${rp.name}`, body: 'Galiots have been sighted taking fishing boats. Expect trouble in these waters.' });
     for (let i = 0; i < 2; i++) if (S.npcs.filter(n => n.kind === 'corsair').length < 12) spawnNpc('corsair', false, rp);
   } else if (k === 'rogue') {
@@ -922,9 +1133,16 @@ function portEventMul(p, g) {
   for (const e of S.events) if (e.port === p.id && e.mul && dayIndex() <= e.until && (!e.good || e.good === g)) m *= e.mul;
   return m;
 }
+const TH_ONLY = { carib: ['spain', 'france', 'huguenot', 'england'], indian: ['portugal', 'ottoman', 'gujarat', 'mughal', 'calicut', 'swahili'] };
+const inThFaction = f => { const th = curTh(); return th === 'med' ? !['england', 'gujarat', 'mughal', 'calicut', 'swahili'].includes(f) : TH_ONLY[th].includes(f); };
+function evTh(e) {
+  if (e.port) { const q = portById(e.port); return q ? q.th || 'med' : 'med'; }
+  if (e.region) { const r = REGIONS.find(x => x.id === e.region); return r ? r.th || 'med' : 'med'; }
+  return null;
+}
 function newsFor(p) {
   const d = dayIndex();
-  return S.events.filter(e => !e.hidden && e.title && d - e.start <= 90)
+  return S.events.filter(e => !e.hidden && e.title && d - e.start <= 90 && (evTh(e) || curTh()) === curTh())
     .map(e => ({ e, score: (e.region === p.region ? 3 : 0) + (e.port === p.id ? 3 : 0) + (e.k === 'history' ? 2 : 0) - (d - e.start) / 20 }))
     .sort((a, b) => b.score - a.score).slice(0, 6).map(x => x.e);
 }
@@ -960,6 +1178,8 @@ function runForts() {
     toast('Driven back', `The forts\u2019 guns find you: ${dmg} hull damage, ${lost} men lost. You fall back out of range.`, 'bad');
   }
 }
+const DEEP_DRAFT = ['bertone', 'galleon', 'nau', 'galeonreal', 'galeazza'];
+const tooDeep = type => DEEP_DRAFT.includes(type);
 const ROGUES_ENABLED = false; // renegade pirates switched off for now
 const SAFE_R = 14;
 const GRACE_HOURS = 48, GRACE_AFTER_FIGHT = 12;
@@ -1000,7 +1220,7 @@ function newGame(name, originId) {
     rep, allegiance: null, discovered: {}, contracts: [], kills: 0, trades: 0,
     markets: {}, offers: {}, npcs: [], nextNpcId: 1,
     wind: { dir: rand(0, TAU), str: 12, tdir: rand(0, TAU), tstr: 12 },
-    lastDay: 0, siegeAid: 0, flags: { atlMap: 1, bsMap: 1 }, docked: home.id, pool: {},
+    lastDay: 0, siegeAid: 0, flags: { atlMap: 1, bsMap: 1, thMap: 1 }, theatre: 'med', docked: home.id, pool: {},
   };
   migrate();
   discoverNear(home.wx, home.wy, 260, true);
@@ -1027,6 +1247,13 @@ function migrate() {
   }
   S.owners ??= {}; S.rulers ??= {}; S.bounty ??= {}; S.marque ??= null; S.lts ??= []; S.events ??= [];
   S.wars ??= WARS.map(x => x.slice()); S.allies ??= ALLIES.map(x => x.slice());
+  S.theatre ??= 'med'; S.stash ??= null;
+  HISTORY.forEach((h, i) => { if (S.flags['h' + i]) { S.flags[h.id] = 1; delete S.flags['h' + i]; } }); // history ids used to be positional
+  if (!S.flags.thMap) {
+    S.flags.thMap = 1;
+    for (const [a, b] of [['portugal', 'calicut'], ['portugal', 'ottoman'], ['portugal', 'swahili']]) addPair(S.wars, a, b);
+    addPair(S.allies, 'calicut', 'ottoman');
+  }
   S.rep.rogue = -100;
   POLITICS.wars = S.wars; POLITICS.allies = S.allies;
   if (!ROGUES_ENABLED) { S.npcs = S.npcs.filter(n => n.kind !== 'rogue'); S.events = S.events.filter(e => e.k !== 'rogue'); }
@@ -1152,21 +1379,30 @@ function nodePath(a, b) {
 }
 function weighted(list) { const tot = list.reduce((a, [, w]) => a + w, 0); let r = Math.random() * tot; for (const [v, w] of list) { if ((r -= w) <= 0) return v; } return list[0][0]; }
 function spawnNpc(kind, scatter, atPort, hf) {
-  kind = kind || weighted([['merchant', 52], ['patrol', 20], ['corsair', 22], ['rogue', ROGUES_ENABLED ? 6 : 0]]);
+  const th = curTh();
+  if (th !== 'med' && ['cossack', 'siege', 'rogue'].includes(kind)) return null;
+  kind = kind || (th === 'med' ? weighted([['merchant', 52], ['patrol', 20], ['corsair', 22], ['rogue', ROGUES_ENABLED ? 6 : 0]]) : weighted([['merchant', 55], ['patrol', 25], ['corsair', 20]]));
   if (kind === 'rogue' && !ROGUES_ENABLED) return null;
   let f, type, from, to, roam = 0;
   const L = S.level;
   const raiderType = () => L <= 2 ? weighted([['fusta', 85], ['galiot', 15]]) : L <= 5 ? weighted([['fusta', 45], ['galiot', 45], ['galley', 10]]) : weighted([['galiot', 55], ['galley', 45]]);
   if (kind === 'merchant') {
-    from = pick(PORTS.filter(p => p.f !== 'barbary' && p.f !== 'knights' && !p.site && p.f !== 'huguenot'));
+    from = pick(TPORTS().filter(p => p.f !== 'barbary' && p.f !== 'knights' && !p.site && p.f !== 'huguenot' && (curTh() !== 'carib' || p.f === 'spain')));
     f = from.f;
-    to = pick(PORTS.filter(p => p !== from && !p.site && !atWar(p.f, f) && (!p.bs || BS_FREE.includes(f)))) || from;
+    to = pick(TPORTS().filter(p => p !== from && !p.site && !atWar(p.f, f) && (!p.bs || BS_FREE.includes(f)))) || from;
     type = weighted([['feluca', 20], ['tartane', 45], ['bertone', 28], ['galleon', 7]]);
+    if (th === 'indian' && f !== 'portugal') type = Math.random() < 0.85 ? 'dhow' : 'tartane';
+    if (th === 'carib') type = weighted([['tartane', 25], ['bertone', 45], ['galleon', 30]]);
+    if ((to.river || from.river) && tooDeep(type)) type = 'tartane';
   } else if (kind === 'patrol') {
-    f = atPort && !FACTIONS[atPort.f].outlaw && !FACTIONS[atPort.f].internal && atPort.f !== 'ragusa' ? atPort.f : weighted([['spain', 30], ['venice', 22], ['ottoman', 28], ['genoa', 7], ['france', 6], ['portugal', 9], ['morocco', 3]]);
-    from = atPort && atPort.f === f ? atPort : pick(PORTS.filter(p => p.f === f)) || pick(PORTS);
-    to = pick(PORTS.filter(p => p !== from && allied(p.f, f))) || from;
+    f = atPort && !FACTIONS[atPort.f].outlaw && !FACTIONS[atPort.f].internal && atPort.f !== 'ragusa' ? atPort.f
+      : th === 'carib' ? 'spain' : th === 'indian' ? weighted([['portugal', 65], ['ottoman', 25], ['gujarat', 10]])
+      : weighted([['spain', 30], ['venice', 22], ['ottoman', 28], ['genoa', 7], ['france', 6], ['portugal', 9], ['morocco', 3]]);
+    from = atPort && atPort.f === f ? atPort : pick(TPORTS().filter(p => p.f === f)) || pick(TPORTS());
+    to = pick(TPORTS().filter(p => p !== from && allied(p.f, f))) || from;
     type = weighted([['galiot', 35], ['galley', 45], ['galleon', 20]]);
+    if (th === 'carib' || (th === 'indian' && f === 'portugal')) type = weighted([['galiot', 30], ['galleon', 55], ['bertone', 15]]);
+    if ((to.river || from.river) && tooDeep(type)) type = 'galley';
   } else if (kind === 'hunter') {
     f = hf; from = atPort; to = from; type = weighted([['galiot', 40], ['galley', 50], ['galleon', 10]]); roam = 99;
   } else if (kind === 'cossack') {
@@ -1175,13 +1411,14 @@ function spawnNpc(kind, scatter, atPort, hf) {
     f = 'ottoman'; from = portById('birgu'); to = from; type = 'galley'; roam = 99;
   } else if (kind === 'rogue') {
     f = 'rogue'; type = weighted([['fusta', 40], ['galiot', 40], ['tartane', 10], ['bertone', 10]]); roam = randi(3, 5);
-    from = atPort || pick(PORTS.filter(p => regionRisk(p.region) >= 1)) || pick(PORTS);
+    from = atPort || pick(TPORTS().filter(p => regionRisk(p.region) >= 1)) || pick(TPORTS());
     to = from;
   } else {
-    f = S.flags.huguenots && Math.random() < 0.2 ? 'huguenot' : weighted([['barbary', 70], ['knights', 20], ['morocco', 10]]);
-    from = (atPort && Math.random() < 0.8 && f !== 'huguenot') ? atPort : pick(PORTS.filter(p => p.f === f)) || pick(PORTS);
-    to = pick(PORTS.filter(p => p.f === f)) || from;
-    type = f === 'huguenot' ? weighted([['tartane', 40], ['bertone', 45], ['galleon', 15]]) : raiderType(); roam = randi(2, 4);
+    f = th === 'carib' ? weighted([['huguenot', 40], ['france', 30], ['england', 30]]) : th === 'indian' ? 'calicut'
+      : S.flags.huguenots && Math.random() < 0.2 ? 'huguenot' : weighted([['barbary', 70], ['knights', 20], ['morocco', 10]]);
+    from = (atPort && Math.random() < 0.8 && f !== 'huguenot') ? atPort : pick(TPORTS().filter(p => p.f === f)) || pick(TPORTS());
+    to = pick(TPORTS().filter(p => p.f === f)) || from;
+    type = (f === 'huguenot' || f === 'england' || (f === 'france' && th === 'carib')) ? weighted([['tartane', 40], ['bertone', 45], ['galleon', 15]]) : raiderType(); roam = randi(2, 4);
   }
   const def = SHIPS[type];
   const crewScale = kind === 'patrol' || kind === 'siege' || kind === 'hunter' ? rand(0.75, 1) : (kind === 'corsair' || kind === 'rogue' || kind === 'cossack') ? clamp(0.15 + L * 0.1, 0.15, 1) : rand(0.4, 0.8);
@@ -1224,9 +1461,9 @@ function spawnNpc(kind, scatter, atPort, hf) {
   S.npcs.push(npc);
   return npc;
 }
-function spawnConvoy(nation, india) {
-  const start = GRAPH.nodes[nearestSeaNode(...(india ? proj(-20, 12) : proj(-26.5, 38.3)))];
-  const dest = portById(india ? 'lisbon' : 'cadiz');
+function spawnConvoy(nation, india, carib) {
+  const start = GRAPH.nodes[nearestSeaNode(...(carib ? proj(-95.5, 21.5, 'carib') : india ? proj(-20, 12) : proj(-26.5, 38.3)))];
+  const dest = portById(carib ? 'havana' : india ? 'lisbon' : 'cadiz');
   const path = nodePath(nearestSeaNode(start.x, start.y), dest.node); if (!path) return;
   const cid = 'cv' + S.nextNpcId;
   const mk = (kind, type, dx, dy) => {
@@ -1237,11 +1474,12 @@ function spawnConvoy(nation, india) {
   };
   const lead = mk('treasure', india ? 'nau' : 'galleon', 0, 0);
   if (india) { lead.gold = randi(2500, 4500); lead.cargo = { spices: 180, sugar: 60, ivory: 40 }; }
+  else if (carib) { lead.gold = randi(8000, 14000); lead.cargo = { silver: 60, cochineal: 30 }; }
   else { lead.gold = randi(9000, 16000); lead.cargo = { gold: 30, sugar: 40 }; }
   for (let k = 0; k < (india ? 2 : 3); k++) mk('escort', india ? weighted([['nau', 1], ['galleon', 2]]) : 'galleon', rand(-14, 14), rand(-14, 14));
-  const ev = india ? ['The India fleet is sighted', `The carracks of the Carreira da Índia beat north for Lisbon, holds full of pepper. Escorted, but rich.`]
+  const ev = carib ? ['The silver fleet sails', 'The New Spain flota leaves Veracruz for Havana, holds full of Zacatecas silver. Heavily escorted.'] : india ? ['The India fleet is sighted', `The carracks of the Carreira da Índia beat north for Lisbon, holds full of pepper. Escorted, but rich.`]
                    : ['The flota is at the Azores', 'Treasure galleons from the Indies sail for Cádiz under heavy escort. The richest prize afloat.'];
-  S.events.push({ k: 'convoy', region: india ? 'capeverde' : 'azores', start: dayIndex(), until: dayIndex() + 30, risk: 0, title: ev[0], body: ev[1] });
+  S.events.push({ k: 'convoy', region: carib ? 'gulfmexico' : india ? 'capeverde' : 'azores', start: dayIndex(), until: dayIndex() + 30, risk: 0, title: ev[0], body: ev[1] });
   toast(ev[0], ev[1], 'gold');
 }
 function nearestSeaNode(x, y) { let b = 0, bd = Infinity; GRAPH.nodes.forEach((n, i) => { if (n.port) return; const d = Math.hypot(n.x - x, n.y - y); if (d < bd) { bd = d; b = i; } }); return b; }
@@ -1249,7 +1487,7 @@ function nearestNode(x, y) { let b = 0, bd = Infinity; GRAPH.nodes.forEach((n, i
 function roamLeg(npc) {
   const here = nearestNode(npc.x, npc.y);
   const wantBS = npc.f === 'cossack' || (npc.f === 'ottoman' && inBlackSea(npc.x, npc.y));
-  const wantOcean = npc.f === 'huguenot';
+  const wantOcean = npc.f === 'huguenot' && curTh() === 'med';
   const cands = GRAPH.nodes.map((n, i) => i).filter(i => { const N = GRAPH.nodes[i]; return !N.port && Math.hypot(N.x - npc.x, N.y - npc.y) < 650 && i !== here && inBlackSea(N.x, N.y) === wantBS && inOcean(N.x, N.y) === wantOcean; });
   const dest = cands.length ? weighted(cands.map(i => { const r = regionRisk(regionAt(GRAPH.nodes[i].x, GRAPH.nodes[i].y).id); return [i, [1, 3, 7][r]]; })) : here;
   return nodePath(here, dest) || [];
@@ -1295,9 +1533,9 @@ function updateNpcs(dtH) {
   const ordinary = S.npcs.filter(n => n.kind === 'merchant' || n.kind === 'patrol' || n.kind === 'corsair').length;
   if (ordinary < 26 && Math.random() < 0.05) spawnNpc(weighted([['merchant', 55], ['patrol', 21], ['corsair', 24]]));
   const rogueWant = 1 + REGIONS.filter(r => regionRisk(r.id) >= 2).length;
-  if (S.npcs.filter(n => n.kind === 'cossack').length < (S.flags.cossackSurge ? 4 : 2) && Math.random() < 0.01) spawnNpc('cossack');
+  if (curTh() === 'med' && S.npcs.filter(n => n.kind === 'cossack').length < (S.flags.cossackSurge ? 4 : 2) && Math.random() < 0.01) spawnNpc('cossack');
   if (ROGUES_ENABLED && S.npcs.filter(n => n.kind === 'rogue').length < rogueWant && Math.random() < 0.01) spawnNpc('rogue');
-  if (siegeActive() && S.npcs.filter(n => n.kind === 'siege').length < 4 && Math.random() < 0.02) spawnNpc('siege');
+  if (curTh() === 'med' && siegeActive() && S.npcs.filter(n => n.kind === 'siege').length < 4 && Math.random() < 0.02) spawnNpc('siege');
 }
 const sightRange = () => 75 + S.skills.nav * 4;
 function npcVisible(n) {
@@ -1305,7 +1543,7 @@ function npcVisible(n) {
   if (d <= sightRange()) return true;
   return hasLt('renegade') && (n.kind === 'corsair' || n.kind === 'rogue') && d <= 250;
 }
-const huntsYou = n => isHostile(n.f) || (n.kind === 'hunter' && (S.bounty[n.f] || 0) >= 150) || (n.kind === 'escort' && !!S.flags['angry_' + n.convoy]);
+const huntsYou = n => isHostile(n.f) || (n.f === 'portugal' && n.kind === 'patrol' && curTh() === 'indian' && !hasCartaz()) || (n.kind === 'hunter' && (S.bounty[n.f] || 0) >= 150) || (n.kind === 'escort' && !!S.flags['angry_' + n.convoy]);
 function npcAI() {
   if (S.docked || B) return;
   nearShip = null; let nd = 28;
@@ -1331,9 +1569,15 @@ function update(dtReal) {
   S.t += dtH;
   // wind
   const w = S.wind;
-  const [plo, pla] = unproj(S.x, S.y), trades = pla < 28.5 && pla > 9 && plo < -9;
+  const [plo, pla] = unproj(S.x, S.y), th = curTh(), trades = th === 'med' && pla < 28.5 && pla > 9 && plo < -9, mon = curDate().getUTCMonth();
   if (Math.random() < dtH / 14) {
-    if (trades) { w.tdir = Math.PI / 4 + rand(-0.3, 0.3); w.tstr = rand(13, 19); } // the north-east trade wind
+    if (th === 'indian') { // the monsoon decides everything
+      if (mon >= 5 && mon <= 8) { w.tdir = 1.25 * Math.PI + rand(-0.25, 0.25); w.tstr = rand(17, 25); }        // south-west monsoon, June to September
+      else if (mon >= 10 || mon <= 2) { w.tdir = 0.25 * Math.PI + rand(-0.3, 0.3); w.tstr = rand(10, 16); }  // north-east monsoon, November to March
+      else { w.tdir = w.dir + rand(-1.6, 1.6); w.tstr = rand(3, 9); }                                        // the calm between monsoons
+    }
+    else if (th === 'carib') { w.tdir = 0.38 * Math.PI + rand(-0.35, 0.35); w.tstr = rand(11, 18); }          // the trade wind, always from the east-north-east
+    else if (trades) { w.tdir = Math.PI / 4 + rand(-0.3, 0.3); w.tstr = rand(13, 19); } // the north-east trade wind
     else { w.tdir = w.dir + rand(-1.4, 1.4); w.tstr = clamp(w.str + rand(-7, 7), 3, 24); }
   }
   w.dir += angDiff(w.dir, w.tdir) * Math.min(1, dtH * 0.08); w.dir = (w.dir + TAU) % TAU;
@@ -1386,12 +1630,19 @@ function updatePlayer(dtReal, dtH) {
       if (!S.atForts || S.t - S.atForts > 3) toast('The Bosporus is closed to you', 'The forts of Rumeli Hisarı fire a warning shot. Foreign ships need an imperial firman, sold by Ottoman harbour masters.', 'bad');
       S.atForts = S.t; S.speed = 0; S.route = null; S.routeDest = null; S.target = null; break;
     }
+    if (tooDeep(S.ship.type) && inRiverChannel(nx, ny) && !inRiverChannel(S.x, S.y)) {
+      if (!S.flags.riverWarn) { toast('Too deep for the river', `Your ${shipDef().name.toLowerCase()} draws too much water. Only galleys, feluccas, tartanes and other shallow ships can go upriver.`, 'bad'); S.flags.riverWarn = 1; setTimeout(() => S && (S.flags.riverWarn = 0), 5000); }
+      S.speed = 0; S.route = null; S.routeDest = null; S.target = null; break;
+    }
     if (isLand(nx, ny)) {
       if (S.speed > 2 && !S.flags.agroundWarn) { toast('Breakers ahead', 'The leadsman calls shoal water. Bear away from the coast.', 'bad'); S.flags.agroundWarn = 1; setTimeout(() => S && (S.flags.agroundWarn = 0), 4000); }
       S.speed = 0; break;
     }
     S.x = nx; S.y = ny;
   }
+  { const seg = inRiverChannel(S.x, S.y); // the river current carries you towards the sea
+    if (seg) { const L = Math.hypot(seg.bx - seg.ax, seg.by - seg.ay), cx = (seg.ax - seg.bx) / L * seg.r.current * dtH, cy = (seg.ay - seg.by) / L * seg.r.current * dtH;
+      if (!isLand(S.x + cx, S.y + cy)) { S.x += cx; S.y += cy; } } }
   wakeTimer += dtReal;
   if (wakeTimer > 0.12) { wakeTimer = 0; if (S.speed > 0.5) wake.push([S.x, S.y, performance.now()]); if (wake.length > 40) wake.shift(); }
 }
@@ -1439,10 +1690,11 @@ function dailyTick() {
   // storms
   const inBS = inBlackSea(S.x, S.y);
   const inOc = inOcean(S.x, S.y);
-  if (!S.docked && Math.random() < (inBS ? 0.09 : inOc ? 0.05 : 0.035) && !(inBS && hasLt('laz'))) {
-    const dmg = Math.round(rand(4, 16) * def.hull / 80 * (1 - 0.06 * S.skills.nav) * (hasLt('pilot') ? 0.5 : 1) * (inOc && def.oars > 0.5 ? 1.6 : 1));
+  const mo = curDate().getUTCMonth(), hurricane = curTh() === 'carib' && mo >= 7 && mo <= 9, monsoonPeak = curTh() === 'indian' && mo >= 5 && mo <= 7;
+  if (!S.docked && Math.random() < (inBS ? 0.09 : inOc ? 0.05 : hurricane ? 0.1 : monsoonPeak ? 0.09 : 0.035) && !(inBS && hasLt('laz'))) {
+    const dmg = Math.round(rand(4, 16) * def.hull / 80 * (1 - 0.06 * S.skills.nav) * (hasLt('pilot') ? 0.5 : 1) * (inOc && def.oars > 0.5 ? 1.6 : 1) * (hurricane ? 2.2 : monsoonPeak ? 1.4 : 1));
     S.ship.hull = Math.max(1, S.ship.hull - dmg);
-    let msg = inOc && def.oars > 0.5 ? `Atlantic seas break over your low galley. Hull damage ${dmg}.` : inBS ? `A Black Sea storm blows up out of nowhere. Hull damage ${dmg}.` : `A ${pick(['mistral', 'bora', 'sirocco gale', 'squall line'])} strikes. Hull damage ${dmg}.`;
+    let msg = hurricane ? `A hurricane! The sky turns green and the sea comes aboard. Hull damage ${dmg}.` : monsoonPeak ? `Monsoon squalls batter the ship. Hull damage ${dmg}.` : inOc && def.oars > 0.5 ? `Atlantic seas break over your low galley. Hull damage ${dmg}.` : inBS ? `A Black Sea storm blows up out of nowhere. Hull damage ${dmg}.` : `A ${pick(['mistral', 'bora', 'sirocco gale', 'squall line'])} strikes. Hull damage ${dmg}.`;
     const goods = Object.keys(S.cargo).filter(g => S.cargo[g] > 0);
     if (goods.length && Math.random() < 0.5 - S.skills.nav * 0.04) {
       const g = pick(goods), q = Math.ceil(S.cargo[g] * rand(0.1, 0.3)); S.cargo[g] -= q; if (!S.cargo[g]) delete S.cargo[g];
@@ -1461,14 +1713,16 @@ function dailyTick() {
   S.contracts = S.contracts.filter(c => !c.failed);
   // fever on the Guinea coast
   { const [lo, la] = unproj(S.x, S.y);
-    if (la < 12.5 && lo > -18.5 && !hasLt('surgeon') && Math.random() < 0.3) {
+    const th = curTh(), feverish = th === 'med' ? (la < 12.5 && lo > -18.5 ? 0.3 : 0) : th === 'carib' ? (la < 12.5 ? 0.18 : 0.04) : (la < 2 ? 0.15 : 0);
+    if (feverish && !voyageMute && !hasLt('surgeon') && Math.random() < feverish) {
       const sick = Math.max(1, Math.ceil(S.crew * 0.04)); S.crew = Math.max(1, S.crew - sick);
-      toast('Fever', `The Guinea fever takes ${sick} of your men. A surgeon would save them.`, 'bad');
+      toast('Fever', th === 'med' ? `The Guinea fever takes ${sick} of your men. A surgeon would save them.` : `Fever takes ${sick} of your men. A surgeon would save them.`, 'bad');
     } }
   // treasure fleets sail every year
   { const dt = curDate(), y = dt.getUTCFullYear(), m = dt.getUTCMonth(), dd = dt.getUTCDate();
-    if (m === 7 && dd >= 20 && !S.flags['flota' + y]) { S.flags['flota' + y] = 1; spawnConvoy('spain'); }
-    if (m === 6 && dd >= 25 && !S.flags['india' + y]) { S.flags['india' + y] = 1; spawnConvoy(S.owners.lisbon === 'spain' ? 'spain' : 'portugal', true); } }
+    if (curTh() === 'med' && m === 7 && dd >= 20 && !S.flags['flota' + y]) { S.flags['flota' + y] = 1; spawnConvoy('spain'); }
+    if (curTh() === 'med' && m === 6 && dd >= 25 && !S.flags['india' + y]) { S.flags['india' + y] = 1; spawnConvoy(S.owners.lisbon === 'spain' ? 'spain' : 'portugal', true); }
+    if (curTh() === 'carib' && m === 6 && dd >= 10 && !S.flags['plata' + y]) { S.flags['plata' + y] = 1; spawnConvoy('spain', false, true); } }
   // lieutenants at work
   if (hasLt('wright')) S.ship.hull = Math.min(def.hull, S.ship.hull + 2);
   if (hasLt('diver') && !S.docked && Math.random() < 0.06) { const g = randi(30, 120); S.gold += g; toast('Salvage', `${specById('diver').name} brings up ${g} ducats\u2019 worth from an old wreck.`, 'gold'); }
@@ -1478,7 +1732,7 @@ function dailyTick() {
     const want = S.bounty[f] >= 300 ? Math.min(3, Math.floor(S.bounty[f] / 350) + 1) : 0;
     const have = S.npcs.filter(n => n.kind === 'hunter' && n.f === f).length;
     if (have < want && S.npcs.filter(n => n.kind === 'hunter').length < 4 && Math.random() < 0.5) {
-      const base = PORTS.filter(q => q.f === f).sort((a, b) => Math.hypot(a.x - S.x, a.y - S.y) - Math.hypot(b.x - S.x, b.y - S.y))[0];
+      const base = TPORTS().filter(q => q.f === f).sort((a, b) => Math.hypot(a.x - S.x, a.y - S.y) - Math.hypot(b.x - S.x, b.y - S.y))[0];
       if (base) { spawnNpc('hunter', false, base, f); toast(`${FACTIONS[f].adj} hunters at sea`, `A galley has sailed from ${base.name} with your description and ${fmt(S.bounty[f])} ducats on your head.`, 'bad'); }
     }
   }
@@ -1525,6 +1779,7 @@ function startBattle(npc, playerInit, camp) {
     }
   }
   S.route = null; S.target = null;
+  musicStop(true);
   if (npc.convoy && playerInit) S.flags['angry_' + npc.convoy] = 1;
   B = { npc, range: playerInit ? 3 : 2, log: [], crew0: npc.crew, crewStart: S.crew, hull0: SHIPS[npc.type].hull, playerInit, piracy, licensed: licensedAgainst(npc.f), over: false, campaign: camp || null };
   const def = SHIPS[npc.type];
@@ -1548,6 +1803,7 @@ function battleAct(act) {
   const L = m => B.log.push(m);
   // player
   if (act === 'fire') {
+    sfxCannon(pd.guns + escortGuns());
     const r = broadside(pd.guns + escortGuns(), B.range, S.skills.gun, hasLt('gunner') ? 1.25 : 1);
     n.hull = Math.max(0, n.hull - r.hull); n.crew = Math.max(0, n.crew - r.crew);
     L(`Your broadside: ${r.hull} hull damage, ${r.crew} of their men down.`);
@@ -1581,6 +1837,7 @@ function battleAct(act) {
   else if (theirStrength > myStrength * 1.25) ea = B.range > 1 ? (Math.random() < 0.75 ? 'close' : 'fire') : 'board';
   else ea = B.range > 2 ? (Math.random() < 0.5 ? 'close' : 'fire') : 'fire';
   if (ea === 'fire') {
+    setTimeout(() => sfxCannon(nd.guns, true), 450);
     const r = broadside(nd.guns, B.range, n.kind === 'merchant' ? 0 : 2, B.campaign ? 0.75 : 1);
     const es = escorts();
     if (es.length && Math.random() < 0.35) {
@@ -1654,7 +1911,7 @@ function endBattle(result) {
     S.ship.hull = Math.max(1, Math.round(pd.hull * 0.25)); S.crew = Math.max(pd.crewMin, Math.floor(S.crew)); S.morale = 30;
     B.loot.push(`They strip your hold and take ${fmt(lostGold)} ducats.`);
     if (n.kind === 'hunter') { S.bounty[n.f] = Math.floor((S.bounty[n.f] || 0) / 2); B.loot.push(`The ${FACTIONS[n.f].adj} magistrates fine you; half your bounty is struck off.`); }
-    const safe = PORTS.filter(p => !isHostile(p.f) && (!p.site || p.f === 'player')).sort((a, b) => Math.hypot(a.x - S.x, a.y - S.y) - Math.hypot(b.x - S.x, b.y - S.y))[0];
+    const safe = TPORTS().filter(p => !isHostile(p.f) && (!p.site || p.f === 'player')).sort((a, b) => Math.hypot(a.x - S.x, a.y - S.y) - Math.hypot(b.x - S.x, b.y - S.y))[0];
     if (safe) { S.x = safe.wx; S.y = safe.wy; S.discovered[safe.id] = true; B.loot.push(`You limp into ${safe.name} under jury rig.`); }
     n.cooldown = 72; n.chase = false;
 
@@ -1681,8 +1938,8 @@ function endBattle(result) {
 function routeDist(a, b) { const r = shortestPath(a.node, b.node); return r ? r.length : Math.hypot(a.x - b.x, a.y - b.y) * 1.4; }
 function makeOffers(p) {
   const list = [];
-  const enemies = Object.keys(FACTIONS).filter(f => atWar(f, p.f) && (ROGUES_ENABLED || f !== 'rogue'));
-  const dests = PORTS.filter(q => q !== p && !q.site && !atWar(q.f, p.f));
+  const enemies = Object.keys(FACTIONS).filter(f => atWar(f, p.f) && inThFaction(f) && (ROGUES_ENABLED || f !== 'rogue'));
+  const dests = TPORTS().filter(q => q !== p && !q.site && !atWar(q.f, p.f));
   for (let i = 0; i < 3; i++) {
     const roll = Math.random();
     const d = pick(dests), dist = routeDist(p, d), days = Math.ceil(dist / 130 * 1.7) + 4;
@@ -1774,7 +2031,7 @@ function fleetDaily() {
   }
 }
 function fleetHTML(p) {
-  const known = PORTS.filter(q => S.discovered[q.id] && !q.site && !isHostile(q.f));
+  const known = PORTS.filter(q => S.discovered[q.id] && !q.site && !isHostile(q.f) && (q.th || 'med') === (p.th || 'med'));
   const opt = (sel, list, f) => list.map(x => `<option value="${x[0]}" ${x[0] === sel ? 'selected' : ''}>${esc(x[1])}</option>`).join('');
   let html = `<p class="mute">Fleet ${S.fleet.length}/${maxFleet()}. Higher rank in a power’s service lets you command more ships. Buy hulls for the fleet at any shipyard. Upkeep is paid on the 1st of each month.</p>`;
   if (!S.fleet.length) return html + '<p class="mute">You command no other ships yet.</p>';
@@ -1935,8 +2192,11 @@ function finishCampaign(result) {
 }
 
 // ---------- docking ----------
+const hasCartaz = () => (S.cartazUntil && dayIndex() <= S.cartazUntil) || S.allegiance === 'portugal' || (S.allegiance === 'spain' && S.owners.lisbon === 'spain');
+const indiesLawful = () => S.allegiance === 'spain' || S.origin === 'naples' || (S.licenceUntil && dayIndex() <= S.licenceUntil);
 function harbourOpen(p) {
   const b = S.bounty[p.f] || 0;
+  if (p.malabar) { const mo = curDate().getUTCMonth(); if (mo >= 5 && mo <= 7) return { ok: false, why: 'Closed by the monsoon' }; }
   if (b >= 600) return { ok: false, why: 'Wanted here' };
   if (isHostile(p.f) && !(p.f === 'barbary' && hasLt('interp'))) return { ok: false, why: 'Harbour closed' };
   return { ok: true };
@@ -1944,7 +2204,7 @@ function harbourOpen(p) {
 function dock(p) {
   const ho = harbourOpen(p);
   if (!ho.ok) {
-    toast(ho.why, ho.why === 'Wanted here' ? `Your face is nailed to the gate of ${p.name}: ${fmt(S.bounty[p.f])} ducats. Let the bounty cool or pay it off in another ${FACTIONS[p.f].adj} port.` : `${p.name}’s chain is up. The ${FACTIONS[p.f].adj} will not admit you.`, 'bad');
+    toast(ho.why, ho.why === 'Closed by the monsoon' ? `The surf on the Malabar bar is too heavy until September. Shelter in Goa\u2019s river or sail north to Diu.` : ho.why === 'Wanted here' ? `Your face is nailed to the gate of ${p.name}: ${fmt(S.bounty[p.f])} ducats. Let the bounty cool or pay it off in another ${FACTIONS[p.f].adj} port.` : `${p.name}’s chain is up. The ${FACTIONS[p.f].adj} will not admit you.`, 'bad');
     return;
   }
   if ((S.bounty[p.f] || 0) >= 150) toast('Wanted', 'Your description is posted at the harbour gate. Settle with the harbour master before the hunters find you.', 'bad');
@@ -1956,7 +2216,8 @@ function dock(p) {
   deliverContracts(p);
   S.morale = clamp(S.morale + 4, 0, 100);
   if (S.pool[p.id] == null || S.pool[p.id].day !== dayIndex()) S.pool[p.id] = { day: dayIndex(), n: randi(4, 10 + (p.yard * 8)) };
-  portTab = 'market'; openModal('port'); renderPort(); save();
+  portTab = 'market'; marketFilter = 'best'; openModal('port'); renderPort(); save();
+  sfxBell(p.f === 'none' ? 0 : 3); musicPlay(p.f);
 }
 function undock() { S.docked = null; S.sail = 1; closeModal(); S.heading = S.heading; }
 
@@ -1971,9 +2232,14 @@ function buy(p, g, n) {
   if (bought) {
     const had = S.cargo[g] || 0;
     S.basis[g] = ((S.basis[g] || 0) * had + spent) / (had + bought);
-    S.cargo[g] = had + bought;
+    S.cargo[g] = had + bought; contraband(p, spent);
   } else toast('Cannot buy', S.gold < buyPrice(p, g) ? 'Not enough ducats.' : holdFree() <= 0 ? 'Your hold is full.' : 'The market is sold out.', 'bad');
   renderPort();
+}
+function contraband(p, value) {
+  if ((p.th || 'med') !== 'carib' || p.f !== 'spain' || indiesLawful() || value <= 0) return;
+  addBounty('spain', value * 0.06);
+  if (!S.flags.contraWarn || dayIndex() - S.flags.contraWarn > 20) { S.flags.contraWarn = dayIndex(); toast('Contraband', 'Only Spanish subjects and licensed traders may trade in the Indies. The crown\u2019s officials note your name. Buy a licence from the Casa de Contratación in Seville.', 'bad'); }
 }
 function sell(p, g, n) {
   const have = S.cargo[g] || 0; n = Math.min(n, have);
@@ -1981,7 +2247,7 @@ function sell(p, g, n) {
   for (let i = 0; i < n; i++) { got += sellPrice(p, g); market(p)[g] += 1; }
   if (!n) return;
   S.cargo[g] = have - n; if (!S.cargo[g]) { delete S.cargo[g]; }
-  S.gold += got;
+  S.gold += got; contraband(p, got);
   const profit = got - (S.basis[g] || 0) * n;
   if (profit > 0) gainXP(profit / 10);
   if (!S.cargo[g]) delete S.basis[g];
@@ -2008,8 +2274,9 @@ function resize() {
 }
 function buildPaths() {
   landPath = new Path2D();
-  for (const p of LAND_POLYS) { p.pts.forEach(([x, y], i) => i ? landPath.lineTo(x, y) : landPath.moveTo(x, y)); landPath.closePath(); }
-  const roses = [proj(4.2, 39.4), proj(18.2, 35.6), proj(30.5, 33.6), proj(33.0, 43.6), proj(-15.0, 34.0), proj(-14.0, 12.0), proj(-24.0, 25.0)];
+  for (const p of LAND_POLYS) { if (p.void) continue; p.pts.forEach(([x, y], i) => i ? landPath.lineTo(x, y) : landPath.moveTo(x, y)); landPath.closePath(); }
+  const roses = [proj(4.2, 39.4), proj(18.2, 35.6), proj(30.5, 33.6), proj(33.0, 43.6), proj(-15.0, 34.0), proj(-14.0, 12.0), proj(-24.0, 25.0),
+    proj(-86, 24.5, 'carib'), proj(-72, 15.5, 'carib'), proj(-63, 21, 'carib'), proj(38, 20, 'indian'), proj(55, 16, 'indian'), proj(66, 12, 'indian'), proj(48, 0, 'indian')];
   rhumbPaths = [new Path2D(), new Path2D(), new Path2D()];
   for (const [cx, cy] of roses) {
     for (let k = 0; k < 32; k++) {
@@ -2021,8 +2288,9 @@ function buildPaths() {
   // a hand-drawn coastline for display: each edge gets gentle deterministic wobble
   const wob = (x, y) => (Math.sin(x * 0.21 + y * 0.13) + 0.8 * Math.sin(x * 0.07 - y * 0.19) + 0.4 * Math.sin((x + y) * 0.43)) / 2.2;
   landFine = new Path2D(); landCoast = new Path2D();
-  const onEdge = (x, y) => x <= 0.5 || y <= 0.5 || x >= WORLD_W - 0.5 || y >= WORLD_H - 0.5;
   for (const poly of LAND_POLYS) {
+    if (poly.void) continue;
+    const T = THEATRES[poly.th], onEdge = (x, y) => x <= T.ox + 0.5 || y <= 0.5 || x >= T.ox + T.w - 0.5 || y >= T.h - 0.5;
     const a = poly.pts;
     for (let i = 0; i < a.length; i++) {
       const [x0, y0] = a[i], [x1, y1] = a[(i + 1) % a.length];
@@ -2068,7 +2336,12 @@ const LABELS = [
   ['LVSITANIA', -8.0, 40.0, 1.0, 'land'], ['MAVRETANIA', -6.0, 32.2, 1.1, 'land'], ['LIBYA  DESERTA', 0.0, 22.0, 1.6, 'land'], ['GVINEA', -8.0, 9.5, 1.3, 'land'], ['NIGRITARVM  REGIO', -4.0, 14.0, 1.2, 'land'],
   ['PONTVS  EVXINVS', 34.2, 43.5, 1.2, 'sea'], ['TARTARIA', 32.0, 46.8, 1.0, 'land'], ['CIRCASSIA', 40.6, 44.6, 0.9, 'land'], ['VALACHIA', 26.2, 44.6, 0.9, 'land'],
   ['AEGYPTVS', 28.5, 30.0, 1.1, 'land'], ['CYRENAICA', 21.8, 31.4, 0.9, 'land'], ['TRIPOLITANIA', 14.2, 31.1, 0.9, 'land'], ['BARBARIA', 2.2, 34.6, 1.2, 'land'],
-].map(([t, lo, la, s, k]) => { const [x, y] = proj(lo, la); return { t, x, y, s, k }; });
+  ['MAR DEL NORTE', -66, 22.5, 1.3, 'sea', 'carib'], ['Golfo de Mexico', -91, 25, 1.1, 'sea', 'carib'], ['NOVA HISPANIA', -98, 20.8, 1.1, 'land', 'carib'], ['FLORIDA', -82.5, 29.8, 1.0, 'land', 'carib'],
+  ['YVCATAN', -89.3, 19.6, 0.9, 'land', 'carib'], ['TIERRA FIRME', -70, 9.2, 1.2, 'land', 'carib'], ['CASTILLA DEL ORO', -80.5, 8.0, 0.8, 'land', 'carib'], ['Mar de las Antillas', -75, 15.5, 1.1, 'sea', 'carib'],
+  ['MARE RVBRVM', 38.5, 20.6, 1.0, 'sea', 'indian'], ['Sinus Persicus', 51.6, 27.4, 0.9, 'sea', 'indian'], ['OCEANVS  INDICVS', 64, 8, 1.5, 'sea', 'indian'], ['Mare Arabicum', 62, 18, 1.1, 'sea', 'indian'],
+  ['ARABIA  FELIX', 47, 17, 1.1, 'land', 'indian'], ['ARABIA  DESERTA', 42, 27, 1.1, 'land', 'indian'], ['PERSIA', 56, 30, 1.1, 'land', 'indian'], ['INDIA', 77.5, 17.5, 1.3, 'land', 'indian'],
+  ['ABASSIA', 38.5, 10, 1.0, 'land', 'indian'], ['ZANGVEBAR', 37.5, -2, 1.0, 'land', 'indian'], ['AEGYPTVS', 33, 27.5, 0.9, 'land', 'indian'], ['CAMBAIA', 71.2, 23.6, 0.8, 'land', 'indian'],
+].map(([t, lo, la, s, k, th]) => { const [x, y] = proj(lo, la, th || 'med'); return { t, x, y, s, k }; });
 
 
 // ================= FLAGS of c. 1565, painted once and reused everywhere =================
@@ -2137,6 +2410,11 @@ const FLAG_PAINT = {
   },
   cossack(g) { g.fillStyle = '#8c1f3c'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#f2ead8'; g.fillRect(27, 9, 6, 22); g.fillRect(19, 17, 22, 6); },
   rogue(g) { g.fillStyle = '#16130f'; g.fillRect(0, 0, 60, 40); },
+  england(g) { g.fillStyle = '#f4efe2'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#c0202a'; g.fillRect(26, 0, 8, 40); g.fillRect(0, 16, 60, 8); g.fillStyle = '#20366e'; g.fillRect(0, 0, 60, 2); },
+  gujarat(g) { g.fillStyle = '#c8452f'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#f2d24c'; g.beginPath(); g.arc(30, 20, 9, 0, TAU); g.fill(); g.fillStyle = '#c8452f'; g.beginPath(); g.arc(33, 18, 7.5, 0, TAU); g.fill(); },
+  mughal(g) { g.fillStyle = '#2f8f5b'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#f2c94c'; g.beginPath(); g.arc(30, 20, 7, 0, TAU); g.fill(); for (let k = 0; k < 12; k++) { const a = k / 12 * TAU; g.fillRect(30 + Math.cos(a) * 10 - 1, 20 + Math.sin(a) * 10 - 1, 2, 2); } },
+  calicut(g) { g.fillStyle = '#b8471c'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#f4efe2'; g.beginPath(); g.ellipse(30, 20, 10, 6, 0.4, 0, TAU); g.fill(); g.fillStyle = '#b8471c'; g.beginPath(); g.ellipse(32, 19, 5, 2.5, 0.4, 0, TAU); g.fill(); },
+  swahili(g) { g.fillStyle = '#9a2b2b'; g.fillRect(0, 0, 60, 40); g.strokeStyle = '#f4efe2'; g.lineWidth = 2; g.strokeRect(5, 5, 50, 30); },
   player(g) { g.fillStyle = '#f2c94c'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#22190e'; g.beginPath(); g.moveTo(0, 40); g.lineTo(30, 12); g.lineTo(60, 40); g.lineTo(60, 32); g.lineTo(30, 4); g.lineTo(0, 32); g.closePath(); g.fill(); },
   none(g) { g.fillStyle = '#8c8576'; g.fillRect(0, 0, 60, 40); },
 };
@@ -2243,7 +2521,7 @@ function tickTips(dt) {
   tipTimer += dt;
   if (tipTimer >= tipNext) { tipTimer = 0; tipNext = 120; showTip(); }
 }
-const minZoom = () => Math.max(0.12, view.W / WORLD_W, view.H / WORLD_H);
+const minZoom = () => { const T = TH(); return Math.max(0.12, view.W / T.w, view.H / T.h); };
 
 // ================= LANGUAGE: English / Français =================
 // The game is written in English. In French mode every piece of text on screen is translated
@@ -2260,9 +2538,11 @@ const FR_ADJ = { // English adjective -> [m sg, f sg, m pl, f pl]
   Corsair: ['barbaresque', 'barbaresque', 'barbaresques', 'barbaresques'], Ragusan: ['ragusain', 'ragusaine', 'ragusains', 'ragusaines'],
   Portuguese: ['portugais', 'portugaise', 'portugais', 'portugaises'], Moroccan: ['marocain', 'marocaine', 'marocains', 'marocaines'],
   Huguenot: ['huguenot', 'huguenote', 'huguenots', 'huguenotes'], Crimean: ['de Crimée', 'de Crimée', 'de Crimée', 'de Crimée'],
+  English: ['anglais', 'anglaise', 'anglais', 'anglaises'], Gujarati: ['gujarati', 'gujaratie', 'gujaratis', 'gujaraties'], Mughal: ['moghol', 'moghole', 'moghols', 'mogholes'],
+  Malabari: ['malabar', 'malabare', 'malabars', 'malabares'], Swahili: ['swahili', 'swahilie', 'swahilis', 'swahilies'],
   Cossack: ['cosaque', 'cosaque', 'cosaques', 'cosaques'], Renegade: ['renégat', 'renégate', 'renégats', 'renégates'],
 };
-const FR_PEOPLE = { Spanish: 'les Espagnols', Venetian: 'les Vénitiens', Ottoman: 'les Ottomans', French: 'les Français', Genoese: 'les Génois',
+const FR_PEOPLE = { English: 'les Anglais', Gujarati: 'les Gujaratis', Mughal: 'les Moghols', Malabari: 'les Malabars', Swahili: 'les Swahilis', Spanish: 'les Espagnols', Venetian: 'les Vénitiens', Ottoman: 'les Ottomans', French: 'les Français', Genoese: 'les Génois',
   Hospitaller: 'les Hospitaliers', Corsair: 'les Barbaresques', Ragusan: 'les Ragusains', Portuguese: 'les Portugais', Moroccan: 'les Marocains',
   Huguenot: 'les huguenots', Crimean: 'les Tatars de Crimée', Cossack: 'les Cosaques', Renegade: 'les renégats' };
 const FR_FACTION = { // name -> [bare, article]
@@ -2270,12 +2550,13 @@ const FR_FACTION = { // name -> [bare, article]
   'Kingdom of France': ['Royaume de France', 'le'], 'Republic of Genoa': ['République de Gênes', 'la'], 'Knights of St John': ['Chevaliers de Saint-Jean', 'les'],
   'Barbary Regencies': ['Régences barbaresques', 'les'], 'Republic of Ragusa': ['République de Raguse', 'la'], 'Kingdom of Portugal': ['Royaume de Portugal', 'le'],
   'Saadian Sultanate': ['Sultanat saadien', 'le'], 'Huguenots of La Rochelle': ['Huguenots de La Rochelle', 'les'], 'Crimean Khanate': ['Khanat de Crimée', 'le'],
-  'Zaporozhian Cossacks': ['Cosaques zaporogues', 'les'], 'Rinnegati': ['Rinnegati', 'les'], 'Unclaimed': ['Sans maître', ''], 'Your holdings': ['vos possessions', ''],
+  'Zaporozhian Cossacks': ['Cosaques zaporogues', 'les'], 'Kingdom of England': ['Royaume d’Angleterre', 'le'], 'Sultanate of Gujarat': ['Sultanat du Gujarat', 'le'],
+  'Mughal Empire': ['Empire moghol', 'l’'], 'Zamorin of Calicut': ['Zamorin de Calicut', 'le'], 'Swahili Cities': ['Cités swahilies', 'les'], 'Rinnegati': ['Rinnegati', 'les'], 'Unclaimed': ['Sans maître', ''], 'Your holdings': ['vos possessions', ''],
 };
 const FR_NOUN = { // lower-case English noun -> [French, gender, plural]
   feluca: ['felouque', 'f'], fusta: ['fuste', 'f'], tartane: ['tartane', 'f'], galiot: ['galiote', 'f'], chaika: ['tchaïka', 'f'], bertone: ['bertone', 'f'],
   'war galley': ['galère de guerre', 'f'], galeazza: ['galéasse', 'f'], 'baştarda': ['bâtarde', 'f'], nau: ['nau', 'f'], 'galeón real': ['galion royal', 'm'],
-  capitana: ['capitane', 'f'], galleon: ['galion', 'm'],
+  capitana: ['capitane', 'f'], galleon: ['galion', 'm'], dhow: ['boutre', 'm'],
   merchantman: ['navire marchand', 'm'], warship: ['navire de guerre', 'm'], raider: ['pillard', 'm'], privateer: ['corsaire', 'm'], pirate: ['pirate', 'm'],
   'bounty hunter': ['chasseur de primes', 'm'], raiders: ['pillards', 'm', 1], 'treasure ship': ['navire du trésor', 'm'], 'convoy escort': ['escorte de convoi', 'f'],
   'corsair of the order': ['corsaire de l’Ordre', 'm'], 'galley of the armada': ['galère de l’armada', 'f'], 'armada galley': ['galère de l’armada', 'f'],
@@ -2285,8 +2566,10 @@ const FR_NOUN = { // lower-case English noun -> [French, gender, plural]
 };
 const FR_UNIT = { salma: ['salme', 'salmes', 'f'], salme: ['salme', 'salmes', 'f'], botte: ['botte', 'bottes', 'f'], jar: ['jarre', 'jarres', 'f'], moggio: ['muid', 'muids', 'm'],
   load: ['charge', 'charges', 'f'], bale: ['balle', 'balles', 'f'], cantar: ['quintal', 'quintaux', 'm'], sack: ['sac', 'sacs', 'm'], barrel: ['baril', 'barils', 'm'],
-  bundle: ['ballot', 'ballots', 'm'], loaf: ['pain', 'pains', 'm'], tusk: ['défense', 'défenses', 'f'], mark: ['marc', 'marcs', 'm'] };
-const FR_GOOD_ART = { grain: 'le blé', wine: 'le vin', 'olive oil': 'l’huile d’olive', salt: 'le sel', timber: 'le bois', 'woollen cloth': 'le drap de laine',
+  bundle: ['ballot', 'ballots', 'm'], loaf: ['pain', 'pains', 'm'], tusk: ['défense', 'défenses', 'f'], mark: ['marc', 'marcs', 'm'],
+  bar: ['barre', 'barres', 'f'], arroba: ['arrobe', 'arrobes', 'f'], string: ['rang', 'rangs', 'm'], bahar: ['bahar', 'bahars', 'm'], head: ['tête', 'têtes', 'f'] };
+const FR_GOOD_ART = { silver: 'l’argent', hides: 'les cuirs', cochineal: 'la cochenille', pearls: 'les perles', logwood: 'le bois de campêche', coffee: 'le café', horses: 'les chevaux',
+  calico: 'le calicot', cinnamon: 'la cannelle', frankincense: 'l’encens', grain: 'le blé', wine: 'le vin', 'olive oil': 'l’huile d’olive', salt: 'le sel', timber: 'le bois', 'woollen cloth': 'le drap de laine',
   alum: 'l’alun', 'raw silk': 'la soie grège', 'pepper & spice': 'le poivre et les épices', 'salt fish & caviar': 'le poisson salé et le caviar', beeswax: 'la cire',
   furs: 'les fourrures', sugar: 'le sucre', ivory: 'l’ivoire', 'gold dust': 'la poudre d’or' };
 const FR_RISK = { calm: ['calme', 'calmes'], troubled: ['agitée', 'agitées'], dangerous: ['dangereuse', 'dangereuses'] };
@@ -2339,6 +2622,67 @@ function rangeFR(r) { return FR_RANGE[r.toLowerCase()] || T(r); }
 
 // ---- the dictionary: [English, French or function(captures)] ----
 const FR_ENTRIES = [
+  // ---- the Indies and the Arabian Sea ----
+  ['Silver', 'Argent'], ['Hides', 'Cuirs'], ['Cochineal', 'Cochenille'], ['Pearls', 'Perles'], ['Logwood', 'Bois de campêche'], ['Coffee', 'Café'], ['Horses', 'Chevaux'],
+  ['Calico', 'Calicot'], ['Cinnamon', 'Cannelle'], ['Frankincense', 'Encens'], ['Dhow', 'Boutre'],
+  ['A sewn-plank trading vessel of the Arabian Sea, built to run before the monsoon.', 'Un navire de commerce aux bordages cousus, fait pour courir devant la mousson en mer d’Arabie.'],
+  ['Gulf of Mexico', 'Golfe du Mexique'], ['Florida Strait', 'Détroit de Floride'], ['Greater Antilles', 'Grandes Antilles'], ['Lesser Antilles', 'Petites Antilles'], ['Spanish Main', 'Terre Ferme'],
+  ['Red Sea', 'Mer Rouge'], ['Gulf of Aden', 'Golfe d’Aden'], ['Persian Gulf', 'Golfe Persique'], ['Arabian Sea', 'Mer d’Arabie'], ['Malabar Coast', 'Côte de Malabar'],
+  ['Gulf of Cambay', 'Golfe de Cambay'], ['Swahili Coast', 'Côte swahilie'], ['The Indies', 'Les Indes'], ['The Arabian Sea', 'La mer d’Arabie'], ['Mediterranean', 'Méditerranée'],
+  ['Queen Elizabeth I', 'la reine Élisabeth Ire'], ['Sultan Muzaffar Shah III', 'le sultan Muzaffar Shah III'], ['Emperor Akbar', 'l’empereur Akbar'], ['the Zamorin', 'le Zamorin'], ['the Sultan of Mombasa', 'le sultan de Mombasa'],
+  ['Raga of Cambay', 'Raga de Cambay'], ['Naubat of Akbar', 'Naubat d’Akbar'], ['Song of Malabar', 'Chant du Malabar'], ['Ngoma of the coast', 'Ngoma de la côte'],
+  ['Gentleman adventurer', 'Gentilhomme aventurier'], ['Captain', 'Capitaine'], ['Master and commander', 'Maître et commandant'], ['Vice-admiral of the coast', 'Vice-amiral de la côte'],
+  ['Rear-admiral', 'Contre-amiral'], ['Admiral of the Narrow Seas', 'Amiral de la Manche'], ['Lord High Admiral', 'Lord grand amiral'],
+  ['Mansabdar of 100', 'Mansabdar de 100'], ['Mansabdar of 500', 'Mansabdar de 500'], ['Mansabdar of 1,000', 'Mansabdar de 1 000'], ['Kunjali’s captain', 'Capitaine du Kunjali'],
+  ['Kunjali of the fleet', 'Kunjali de la flotte'], ['Admiral', 'Amiral'], ['Lord of the Sea', 'Seigneur de la mer'], ['Admiral of the coast', 'Amiral de la côte'],
+  ['Fort Caroline falls', 'Chute de Fort Caroline'],
+  ['Pedro Menéndez de Avilés storms the Huguenot fort in Florida and puts its garrison to the sword. It becomes Spanish San Mateo.', 'Pedro Menéndez de Avilés prend d’assaut le fort huguenot de Floride et passe sa garnison au fil de l’épée. Il devient le San Mateo espagnol.'],
+  ['Treachery at San Juan de Ulúa', 'Trahison à San Juan de Ulúa'],
+  ['The Spanish fleet falls on John Hawkins at Veracruz. England and Spain will fight in the Indies.', 'La flotte espagnole tombe sur John Hawkins à Veracruz. L’Angleterre et l’Espagne se battront aux Indes.'],
+  ['Goa besieged', 'Goa assiégée'], ['Bijapur and Ahmadnagar lay siege to Goa and Chaul. The Portuguese hold on.', 'Bijapur et Ahmadnagar assiègent Goa et Chaul. Les Portugais tiennent bon.'],
+  ['Chaliyam falls', 'Chute de Chaliyam'], ['The Zamorin’s army takes the Portuguese fort at Chaliyam, next to Calicut.', 'L’armée du Zamorin prend le fort portugais de Chaliyam, près de Calicut.'],
+  ['Drake at Nombre de Dios', 'Drake à Nombre de Dios'],
+  ['Francis Drake raids Nombre de Dios with the help of the Cimarrones, escaped Africans who live free in the Panama forests.', 'Francis Drake attaque Nombre de Dios avec l’aide des Cimarrones, Africains évadés qui vivent libres dans les forêts de Panama.'],
+  ['Akbar takes Surat', 'Akbar prend Surat'], ['The Mughal emperor conquers Gujarat. Surat now pays its dues to Akbar.', 'L’empereur moghol conquiert le Gujarat. Surat paie désormais ses droits à Akbar.'],
+  ['The silver fleet sails', 'La flotte de l’argent appareille'], ['The New Spain flota leaves Veracruz for Havana, holds full of Zacatecas silver. Heavily escorted.', 'La flota de Nouvelle-Espagne quitte Veracruz pour Havana, les cales pleines de l’argent de Zacatecas. Fortement escortée.'],
+  ['Contraband', 'Contrebande'],
+  ['Only Spanish subjects and licensed traders may trade in the Indies. The crown’s officials note your name. Buy a licence from the Casa de Contratación in Seville.', 'Seuls les sujets espagnols et les marchands patentés peuvent commercer aux Indes. Les officiers de la couronne notent votre nom. Achetez une licence à la Casa de Contratación de Seville.'],
+  ['Closed by the monsoon', 'Fermé par la mousson'], ['The surf on the Malabar bar is too heavy until September. Shelter in Goa’s river or sail north to Diu.', 'La barre de Malabar est infranchissable jusqu’en septembre. Abritez-vous dans la rivière de Goa ou remontez vers Diu.'],
+  ['A hurricane! The sky turns green and the sea comes aboard. Hull damage {}.', c => `Un ouragan ! Le ciel vire au vert et la mer embarque. Dégâts à la coque : ${c[0]}.`],
+  ['Monsoon squalls batter the ship. Hull damage {}.', c => `Les grains de la mousson frappent le navire. Dégâts à la coque : ${c[0]}.`],
+  ['Fever takes {} of your men. A surgeon would save them.', c => `La fièvre emporte ${c[0]} de vos hommes. Un chirurgien les sauverait.`],
+  ['Cartaz', 'Cartaz'], ['Portuguese pass for the Indian Ocean', 'Passeport portugais pour l’océan Indien'], ['Buy a cartaz', 'Acheter un cartaz'], ['Your cartaz is valid', 'Votre cartaz est valable'],
+  ['Good until {}. Portuguese patrols let you pass.', c => `Valable jusqu’au ${c[0]}. Les patrouilles portugaises vous laissent passer.`], ['You sail under the Portuguese crown', 'Vous naviguez sous la couronne de Portugal'], ['No cartaz needed.', 'Pas besoin de cartaz.'],
+  ['The Estado da Índia claims these seas. Without a cartaz, Portuguese patrols seize any ship they meet. Valid one year.', 'L’Estado da Índia revendique ces mers. Sans cartaz, les patrouilles portugaises saisissent tout navire qu’elles croisent. Valable un an.'],
+  ['Buy cartaz · {} d', c => `Acheter un cartaz · ${c[0]} d`], ['Extend · {} d', c => `Prolonger · ${c[0]} d`], ['Cartaz issued', 'Cartaz délivré'],
+  ['Stamped with the arms of the Estado da Índia. Portuguese patrols will let you pass for a year.', 'Frappé aux armes de l’Estado da Índia. Les patrouilles portugaises vous laisseront passer pendant un an.'],
+  ['Casa de Contratación', 'Casa de Contratación'], ['Licence to trade in the Indies', 'Licence pour commercer aux Indes'], ['You may trade in the Indies', 'Vous pouvez commercer aux Indes'],
+  ['As a subject or servant of the King of Spain, the Indies are open to you.', 'Sujet ou serviteur du roi d’Espagne, les Indes vous sont ouvertes.'], ['Your licence is valid', 'Votre licence est valable'], ['Good until {}.', c => `Valable jusqu’au ${c[0]}.`],
+  ['Buy a licence', 'Acheter une licence'], ['Buy licence · {} d', c => `Acheter la licence · ${c[0]} d`], ['Licence granted', 'Licence accordée'],
+  ['Only Spanish subjects may trade in the Indies. Foreigners who do are smugglers, and every sale raises a Spanish bounty. A licence makes your trade lawful for one year.', 'Seuls les sujets espagnols peuvent commercer aux Indes. Les étrangers qui le font sont des contrebandiers, et chaque vente fait monter une prime espagnole. Une licence rend votre commerce légal pendant un an.'],
+  ['The Casa de Contratación enters your name. You may trade in the Indies for a year.', 'La Casa de Contratación inscrit votre nom. Vous pouvez commercer aux Indes pendant un an.'],
+  ['Buy licence', 'Acheter la licence'], ['Buy cartaz', 'Acheter un cartaz'], ['Extend', 'Prolonger'], ['Long voyages', 'Longs voyages'], ['To another chart', 'Vers une autre carte'], ['Carrera de Indias', 'Carrera de Indias'], ['Return to Castile', 'Retour en Castille'],
+  ['Carreira da Índia', 'Carreira da Índia'], ['Home by the Cape', 'Retour par le Cap'], ['Caravan to Suez', 'Caravane vers Suez'], ['Caravan to Cairo', 'Caravane vers Cairo'],
+  ['Across the Ocean Sea with the trade wind behind you, by the Canaries and Dominica to the Indies of Castile.', 'À travers la mer Océane, l’alizé dans le dos, par les Canaries et la Dominique jusqu’aux Indes de Castille.'],
+  ['Up the Bahama channel with the Gulf Stream, north to the westerlies and home by the Azores.', 'Par le canal de Bahama avec le Gulf Stream, au nord jusqu’aux vents d’ouest, et retour par les Açores.'],
+  ['South round the Cape of Good Hope to the Estado da Índia. Six months at sea; leave in March or April to catch the monsoon.', 'Au sud, par le cap de Bonne-Espérance, jusqu’à l’Estado da Índia. Six mois en mer ; partez en mars ou avril pour attraper la mousson.'],
+  ['The pepper carracks leave Malabar in December or January and reach Lisbon by summer, if the Cape allows.', 'Les caraques du poivre quittent le Malabar en décembre ou janvier et atteignent Lisbon à l’été, si le Cap le permet.'],
+  ['Your ship stays in Cairo. Camels carry your cargo across the desert to Suez, where a dhow waits for you on the Red Sea.', 'Votre navire reste à Cairo. Des chameaux portent votre cargaison à travers le désert jusqu’à Suez, où un boutre vous attend sur la mer Rouge.'],
+  ['Your ship is sold at Suez and you take the desert road back to the Nile, and to any ship you left there.', 'Votre navire est vendu à Suez et vous reprenez la route du désert jusqu’au Nil, et jusqu’au navire que vous y avez laissé.'],
+  ['You have missed the season: count on about 40 more days.', 'Vous avez manqué la saison : comptez environ 40 jours de plus.'],
+  ['Caravan fee {} d.', c => `Prix de la caravane : ${c[0]} d.`], ['Provisions needed {}, you have {}.', c => `Vivres nécessaires : ${c[0]}, vous en avez ${c[1]}.`],
+  ['A {} cannot cross an ocean. You need a sailing ship.', c => `${cap(NG(c[0], 'un'))} ne peut pas traverser un océan. Il vous faut un voilier.`],
+  ['You need {} days of provisions for {} days at sea (you have {}).', c => `Il vous faut ${c[0]} jours de vivres pour ${c[1]} jours en mer (vous en avez ${c[2]}).`],
+  ['The camels carry {} loads at most. You carry {}: sell or bank the rest.', c => `Les chameaux portent ${c[0]} charges au plus. Vous en avez ${c[1]} : vendez ou déposez le reste.`],
+  ['The caravan master wants {} ducats.', c => `Le chef de caravane demande ${c[0]} ducats.`], ['Not yet', 'Pas encore'],
+  ['Landfall at {}', c => `Atterrissage à ${c[0]}`], ['Arrived at {}', c => `Arrivée à ${c[0]}`],
+  ['{} days at sea.', c => `${c[0]} jours en mer.`], ['{} days on the road.', c => `${c[0]} jours de route.`],
+  ['{} gales on the way: hull damage {}.', c => `${c[0]} coups de vent en route : dégâts à la coque ${c[1]}.`], ['{} gale on the way: hull damage {}.', c => `${c[0]} coup de vent en route : dégâts à la coque ${c[1]}.`],
+  ['Scurvy takes {} men.', c => `Le scorbut emporte ${c[0]} hommes.`], ['Your surgeon saved many more.', 'Votre chirurgien en a sauvé bien davantage.'], ['A surgeon would have saved half.', 'Un chirurgien en aurait sauvé la moitié.'],
+  ['Wages and dues on the way: {} ducats.', c => `Soldes et droits pendant le voyage : ${c[0]} ducats.`],
+  ['Your {} is laid up in Cairo with {} of the crew. At Suez a dhow is yours.', c => `Votre ${NG(c[0])} reste désarmé${/^(felouque|fuste|tartane|galiote|tchaïka|bertone|galère|galéasse|nau)/.test(NG(c[0])) ? 'e' : ''} à Cairo avec ${c[1] === 'none' ? 'aucun homme' : c[1] + ' hommes'} de l’équipage. À Suez, un boutre est à vous.`],
+  ['The {} sells for {} ducats. Your old ship waits for you at Cairo.', c => `${cap(NG(c[0], 'le'))} se vend ${c[1]} ducats. Votre ancien navire vous attend à Cairo.`],
+  ['The {} sells for {} ducats. At Cairo you buy a felucca for the Nile.', c => `${cap(NG(c[0], 'le'))} se vend ${c[1]} ducats. À Cairo, vous achetez une felouque pour le Nil.`],
   // --- interface ---
   ['Navigation', 'Navigation'], ['Speed under sail, storm damage, chance to escape.', 'Vitesse sous voiles, dégâts des tempêtes, chances de fuite.'],
   ['Gunnery', 'Artillerie'], ['Damage of your broadsides.', 'Puissance de vos bordées.'], ['Leadership', 'Commandement'],
@@ -2737,7 +3081,17 @@ const FR_ENTRIES = [
   ['Bounty settled', 'Prime réglée'], ['The {} strike your name from the list.', c => `${cap(P(c[0]))} rayent votre nom de la liste.`], ['{} letter of marque', c => FR_ADJ[c[0]] ? `Lettre de marque ${A(c[0], 'f')}` : null],
   ['Lawful prey: {}.', c => `Proies légales : ${LIST(c[0])}.`], ['Letter returned', 'Lettre rendue'], ['You sail as a private merchant again.', 'Vous naviguez de nouveau en simple marchand.'],
   ['In the service of the {}', c => `Au service ${F(c[0], 'de')}`], ['You are now {}. Their enemies are yours.', 'Vous êtes désormais {0}. Leurs ennemis sont les vôtres.'],
-  ['Commission resigned', 'Commission rendue'], ['The {} will not forget it.', c => `${cap(P(c[0]))} ne l’oublieront pas.`],
+  ['Commission resigned', 'Commission rendue'],
+  ['Highlights', 'L’essentiel'], ['Too deep for the river', 'Trop de tirant d’eau pour le fleuve'],
+  ['Your {} draws too much water. Only galleys, feluccas, tartanes and other shallow ships can go upriver.', c => `Votre ${NG(c[0])} a trop de tirant d’eau. Seuls les galères, felouques, tartanes et autres navires à faible tirant d’eau remontent le fleuve.`],
+  ['{} lies upriver. Your {} draws too much water; take a shallower ship.', c => `${c[0]} se trouve en amont. Votre ${NG(c[1])} a trop de tirant d’eau ; prenez un navire plus léger.`],
+  ['Sound and music', 'Son et musique'], ['Staples', 'Denrées'], ['Materials', 'Matériaux'], ['Textiles', 'Textiles'], ['Luxuries', 'Luxe'], ['All goods', 'Tout'],
+  ['Your cargo', 'Votre cargaison'], ['Cheap here', 'Bon marché ici'], ['In demand here', 'Demandé ici'], ['Show goods', 'Afficher les marchandises'],
+  ['Nothing special in this market. Browse by category above.', 'Rien de particulier sur ce marché. Parcourez les catégories ci-dessus.'],
+  ['Music: {}', c => `Musique : ${T(c[0])}`], ['Sound', 'Son'], ['Sound effects: on', 'Effets sonores : activés'], ['Sound effects: off', 'Effets sonores : désactivés'],
+  ['Port music: on', 'Musique des ports : activée'], ['Port music: off', 'Musique des ports : désactivée'], ['Sound and music (S)', 'Son et musique (S)'],
+  ['Song of the steppe', 'Chant de la steppe'], ['Your own harbour', 'Votre propre port'], ['Wind over an empty bay', 'Le vent sur une baie déserte'], ['Duma of the Sich', 'Douma de la Sitch'],
+  ['Nawba of Algiers', 'Nouba d’Algiers'], ['Peşrev in Hicaz', 'Peşrev en Hicaz'], ['The {} will not forget it.', c => `${cap(P(c[0]))} ne l’oublieront pas.`],
 ];
 // ---- tips (same order as TIPS) ----
 const TIPS_FR = [
@@ -2856,7 +3210,7 @@ function trText(s) { // translate a full text node, keeping its surrounding whit
   out = out.replace(MONTH_RE, (_, d, mo) => `${d} ${FR_MONTHS[mo]}`)
     .replace(/(\d),(\d{3})(?!\d)/g, '$1 $2')
     .replace(/(\d)\.(\d)/g, '$1,$2')
-    .replace(/\b(de|que|jusque) (?=[aeiouyàâéèêîôûœhAEIOUYÀÂÉÈÊÎÔÛ])/g, (_, w) => w.slice(0, -1) + '’')
+    .replace(/\b(de|que|jusque) (?!Indias|Avilés|Ulúa|Alcântara|Ahmadnagar)(?=[aeiouyàâéèêîôûœhAEIOUYÀÂÉÈÊÎÔÛ])/g, (_, w) => w.slice(0, -1) + '’')
     .replace(/\bde le\b/g, 'du').replace(/\bde les\b/g, 'des').replace(/\bà le\b/g, 'au').replace(/\bà les\b/g, 'aux');
   out = m[1] + out + m[3];
   if (trMemo.size > 4000) trMemo.clear();
@@ -2931,6 +3285,331 @@ function setLang(l) {
 }
 const langSwitch = () => `<div class="seg lang" role="group" aria-label="Language" data-notr><button data-lang="en" aria-pressed="${LANG === 'en'}">English</button><button data-lang="fr" aria-pressed="${LANG === 'fr'}">Français</button></div>`;
 
+// ================= SOUND: sea, guns, bells, and a theme for every nation (all synthesised) =================
+const AUDIO = { ctx: null, master: null, sfx: null, mus: null, waves: null, sfxOn: true, musicOn: true, theme: null, timer: null };
+try { AUDIO.sfxOn = localStorage.getItem('portolan-sfx') !== 'off'; AUDIO.musicOn = localStorage.getItem('portolan-music') !== 'off'; } catch (e) {}
+function audioInit() {
+  if (AUDIO.ctx) { if (AUDIO.ctx.state === 'suspended') AUDIO.ctx.resume().catch(() => {}); return; }
+  try {
+    const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+    const a = AUDIO.ctx = new C();
+    AUDIO.master = a.createGain(); AUDIO.master.gain.value = 0.8; AUDIO.master.connect(a.destination);
+    AUDIO.sfx = a.createGain(); AUDIO.sfx.gain.value = AUDIO.sfxOn ? 1 : 0; AUDIO.sfx.connect(AUDIO.master);
+    AUDIO.mus = a.createGain(); AUDIO.mus.gain.value = 0; AUDIO.mus.connect(AUDIO.master);
+    // the sea: looping brown noise through a low-pass, swelling slowly
+    const len = a.sampleRate * 4, buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+    let last = 0; for (let i = 0; i < len; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
+    const src = a.createBufferSource(); src.buffer = buf; src.loop = true;
+    const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520;
+    const g = a.createGain(); g.gain.value = 0;
+    const lfo = a.createOscillator(), lfoG = a.createGain(); lfo.frequency.value = 0.12; lfoG.gain.value = 0.35;
+    const swell = a.createGain(); swell.gain.value = 0.65; lfo.connect(lfoG); lfoG.connect(swell.gain);
+    src.connect(lp); lp.connect(swell); swell.connect(g); g.connect(AUDIO.sfx); src.start(); lfo.start();
+    AUDIO.waves = { g, lp };
+  } catch (e) { AUDIO.ctx = null; }
+}
+function setSfx(on) { AUDIO.sfxOn = on; try { localStorage.setItem('portolan-sfx', on ? 'on' : 'off'); } catch (e) {} if (AUDIO.sfx) AUDIO.sfx.gain.setTargetAtTime(on ? 1 : 0, AUDIO.ctx.currentTime, 0.1); }
+function setMusic(on) { AUDIO.musicOn = on; try { localStorage.setItem('portolan-music', on ? 'on' : 'off'); } catch (e) {} if (!on) musicStop(); else if (modalOpen === 'port' && S && S.docked) musicPlay(portById(S.docked).f); }
+function audioTick() { // called from the HUD loop
+  const w = AUDIO.waves; if (!w || !S) return;
+  const t = AUDIO.ctx.currentTime;
+  const target = S.docked ? 0.05 : 0.07 + 0.06 * clamp(S.wind.str / 24, 0, 1) + 0.05 * clamp(S.speed / 8, 0, 1);
+  w.g.gain.setTargetAtTime(paused ? 0 : target, t, 0.8);
+  w.lp.frequency.setTargetAtTime(380 + S.wind.str * 18, t, 1);
+}
+function noiseBurst(dur, freq, type = 'lowpass', gain = 1, when = 0) {
+  const a = AUDIO.ctx, t = a.currentTime + when, n = Math.floor(a.sampleRate * dur), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.2);
+  const s = a.createBufferSource(); s.buffer = b; const f = a.createBiquadFilter(); f.type = type; f.frequency.value = freq;
+  const g = a.createGain(); g.gain.value = gain; s.connect(f); f.connect(g); g.connect(AUDIO.sfx); s.start(t);
+}
+function thump(f0, f1, dur, gain, when = 0, out) {
+  const a = AUDIO.ctx, t = a.currentTime + when, o = a.createOscillator(), g = a.createGain();
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(out || AUDIO.sfx); o.start(t); o.stop(t + dur + 0.05);
+}
+function sfxCannon(guns = 4, far = false) {
+  if (!AUDIO.ctx || !AUDIO.sfxOn) return;
+  const shots = clamp(Math.round(guns / 4), 1, 5);
+  for (let i = 0; i < shots; i++) {
+    const w = i * rand(0.09, 0.22), k = far ? 0.45 : 1;
+    noiseBurst(0.9, far ? 500 : 900, 'lowpass', 0.9 * k, w);
+    thump(95, 32, 0.7, 0.9 * k, w);
+  }
+}
+function sfxBell(strikes = 3) {
+  if (!AUDIO.ctx || !AUDIO.sfxOn) return;
+  const a = AUDIO.ctx;
+  for (let s = 0; s < strikes; s++) {
+    const t = a.currentTime + 0.15 + s * 1.1, base = s % 2 ? 330 : 392;
+    for (const [r, g, d] of [[0.5, 0.18, 3.5], [1, 0.25, 3], [1.19, 0.1, 2.2], [1.5, 0.08, 2], [2, 0.09, 1.6], [2.74, 0.05, 1.1], [3.76, 0.03, 0.7]]) {
+      const o = a.createOscillator(), gn = a.createGain(); o.frequency.value = base * r;
+      gn.gain.setValueAtTime(0.0001, t); gn.gain.exponentialRampToValueAtTime(g * 0.6, t + 0.005); gn.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(gn); gn.connect(AUDIO.sfx); o.start(t); o.stop(t + d + 0.1);
+    }
+  }
+}
+
+// ---- music: a small sequencer playing period dance patterns ----
+const MODES = { ionian: [0, 2, 4, 5, 7, 9, 11], dorian: [0, 2, 3, 5, 7, 9, 10], aeolian: [0, 2, 3, 5, 7, 8, 10], mixolydian: [0, 2, 4, 5, 7, 9, 10],
+  hicaz: [0, 1, 4, 5, 7, 8, 10], ukrainian: [0, 2, 3, 6, 7, 9, 10], minpent: [0, 3, 5, 7, 10, 12, 15] };
+// prog: scale degrees (0-based) per bar; lead/bass: instrument; perc: rhythm pattern ('D' low, 't' high, '.' rest) per step
+const THEMES = {
+  spain:   { name: 'La Folía', root: 50, mode: 'aeolian', bpm: 92, beats: 3, prog: [0, 4, 0, 6, 2, 6, 0, 4, 0, 4, 0, 6, 2, 6, 0, 0], lead: 'vihuela', bass: 'viol', perc: null, seed: 11 },
+  portugal:{ name: 'Romanesca', root: 55, mode: 'aeolian', bpm: 84, beats: 3, prog: [2, 6, 0, 4, 2, 6, 0, 4, 2, 6, 0, 4, 2, 6, 4, 0], lead: 'vihuela', bass: 'viol', perc: null, seed: 23 },
+  venice:  { name: 'Passamezzo antico', root: 55, mode: 'dorian', bpm: 76, beats: 4, prog: [0, 6, 0, 4, 2, 6, 0, 4, 0, 6, 0, 4, 2, 6, 4, 0], lead: 'cornett', bass: 'sackbut', perc: null, seed: 7 },
+  genoa:   { name: 'Aria di Ruggiero', root: 55, mode: 'ionian', bpm: 88, beats: 4, prog: [0, 3, 0, 4, 0, 3, 4, 0, 0, 3, 0, 4, 0, 3, 4, 0], lead: 'recorder', bass: 'lute', perc: null, seed: 5 },
+  france:  { name: 'Branle de Bourgogne', root: 53, mode: 'ionian', bpm: 112, beats: 2, prog: [0, 4, 0, 3, 0, 4, 4, 0, 0, 4, 0, 3, 0, 4, 4, 0], lead: 'fife', bass: 'lute', perc: 'D.t.D.tt', seed: 3 },
+  huguenot:{ name: 'Psaume huguenot', root: 50, mode: 'dorian', bpm: 60, beats: 4, prog: [0, 6, 0, 3, 0, 4, 0, 0], lead: 'organ', bass: 'organ', perc: null, seed: 9, chorale: true },
+  knights: { name: 'Plain-chant de l’Ordre', root: 50, mode: 'dorian', bpm: 54, beats: 4, prog: [0, 0, 3, 0, 4, 0, 6, 0], lead: 'chant', bass: 'drone', perc: null, seed: 13 },
+  ragusa:  { name: 'Ballo raguseo', root: 52, mode: 'mixolydian', bpm: 96, beats: 3, prog: [0, 6, 0, 4, 0, 6, 4, 0], lead: 'lute', bass: 'viol', perc: null, seed: 17 },
+  ottoman: { name: 'Peşrev in Hicaz', root: 50, mode: 'hicaz', bpm: 100, beats: 4, prog: [0, 0, 3, 0, 4, 3, 1, 0], lead: 'ney', bass: 'oud', perc: 'D..tD.t.', seed: 19, drone: true },
+  barbary: { name: 'Nawba of Algiers', root: 52, mode: 'hicaz', bpm: 108, beats: 3, prog: [0, 0, 6, 0, 3, 1, 0, 0], lead: 'rebab', bass: 'oud', perc: 'D.tD.t', seed: 29, drone: true },
+  morocco: { name: 'Nuba andalusí', root: 55, mode: 'mixolydian', bpm: 96, beats: 3, prog: [0, 6, 0, 4, 3, 6, 4, 0], lead: 'rebab', bass: 'oud', perc: 'D.tt.t', seed: 31, drone: true },
+  crimea:  { name: 'Song of the steppe', root: 52, mode: 'minpent', bpm: 104, beats: 3, prog: [0, 0, 1, 0, 2, 1, 0, 0], lead: 'kobyz', bass: 'drone', perc: 'D.tD.t', seed: 37, drone: true },
+  cossack: { name: 'Duma of the Sich', root: 50, mode: 'ukrainian', bpm: 120, beats: 2, prog: [0, 3, 0, 4, 0, 3, 4, 0], lead: 'bandura', bass: 'bandura', perc: 'D.t.', seed: 41 },
+  england: { name: 'Greensleeves', root: 57, mode: 'aeolian', bpm: 88, beats: 3, prog: [0, 6, 5, 4, 0, 6, 4, 4, 2, 6, 5, 4, 0, 4, 0, 0], lead: 'recorder', bass: 'lute', perc: null, seed: 53 },
+  gujarat: { name: 'Raga of Cambay', root: 50, mode: 'mixolydian', bpm: 92, beats: 4, prog: [0, 0, 3, 0, 4, 3, 0, 0], lead: 'ney', bass: 'drone', perc: 'D.tD..t.', seed: 59, drone: true },
+  mughal:  { name: 'Naubat of Akbar', root: 52, mode: 'dorian', bpm: 84, beats: 4, prog: [0, 0, 3, 0, 4, 0, 6, 0], lead: 'rebab', bass: 'drone', perc: 'D...D.t.', seed: 61, drone: true },
+  calicut: { name: 'Song of Malabar', root: 55, mode: 'mixolydian', bpm: 104, beats: 4, prog: [0, 3, 0, 4, 0, 3, 4, 0], lead: 'ney', bass: 'drone', perc: 'D.tt.tD.', seed: 67, drone: true },
+  swahili: { name: 'Ngoma of the coast', root: 57, mode: 'mixolydian', bpm: 116, beats: 4, prog: [0, 3, 4, 0, 0, 3, 4, 0], lead: 'oud', bass: 'oud', perc: 'D.tD.tt.', seed: 71 },
+  player:  { name: 'Your own harbour', root: 52, mode: 'dorian', bpm: 80, beats: 3, prog: [0, 6, 2, 6, 0, 3, 4, 0], lead: 'lute', bass: 'viol', perc: null, seed: 43 },
+  none:    { name: 'Wind over an empty bay', root: 50, mode: 'dorian', bpm: 50, beats: 4, prog: [0, 0, 6, 0], lead: 'recorder', bass: 'drone', perc: null, seed: 47 },
+};
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+function seeded(seed) { let s = seed * 9301 + 49297; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+function voice(kind, freq, t, dur, vel = 0.3) {
+  const a = AUDIO.ctx, out = AUDIO.mus;
+  const env = (g, att, rel, peak) => { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(att + 0.02, rel)); };
+  if (['vihuela', 'lute', 'oud', 'bandura'].includes(kind)) { // plucked strings
+    for (const [h, gm] of [[1, 1], [2, 0.35], [3, 0.12]]) {
+      const o = a.createOscillator(), g = a.createGain(), f = a.createBiquadFilter();
+      o.type = kind === 'oud' ? 'sawtooth' : 'triangle'; o.frequency.value = freq * h;
+      f.type = 'lowpass'; f.frequency.setValueAtTime(kind === 'oud' ? 2400 : 3200, t); f.frequency.exponentialRampToValueAtTime(500, t + dur);
+      env(g, 0.004, Math.min(1.6, dur * 1.6), vel * gm * (kind === 'oud' ? 0.35 : 0.6));
+      o.connect(f); f.connect(g); g.connect(out); o.start(t); o.stop(t + Math.min(1.7, dur * 1.7));
+    }
+    return;
+  }
+  if (kind === 'drone' || kind === 'organ' || kind === 'chant') {
+    for (const [h, gm] of kind === 'chant' ? [[1, 1], [2, 0.3], [3, 0.12]] : [[1, 1], [2, 0.5], [4, 0.2]]) {
+      const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; o.frequency.value = freq * h;
+      env(g, kind === 'drone' ? 0.6 : 0.08, dur, vel * gm * (kind === 'drone' ? 0.25 : 0.35));
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.1);
+    }
+    return;
+  }
+  // winds and bowed strings
+  const o = a.createOscillator(), g = a.createGain(), f = a.createBiquadFilter(), vib = a.createOscillator(), vg = a.createGain();
+  const spec = { cornett: ['sawtooth', 1800], sackbut: ['sawtooth', 900], recorder: ['triangle', 2600], fife: ['square', 3200], ney: ['triangle', 1600], rebab: ['sawtooth', 1500], kobyz: ['sawtooth', 1100], viol: ['sawtooth', 1000] }[kind] || ['triangle', 2000];
+  o.type = spec[0]; o.frequency.value = freq; f.type = 'lowpass'; f.frequency.value = spec[1];
+  vib.frequency.value = 5.2; vg.gain.value = freq * (kind === 'ney' || kind === 'rebab' ? 0.012 : 0.006); vib.connect(vg); vg.connect(o.frequency);
+  env(g, kind === 'ney' ? 0.09 : 0.04, dur * 0.95, vel * (spec[0] === 'sawtooth' ? 0.16 : 0.32));
+  o.connect(f); f.connect(g); g.connect(out); o.start(t); vib.start(t); o.stop(t + dur + 0.05); vib.stop(t + dur + 0.05);
+}
+function drum(kind, t, vel = 0.5) {
+  const a = AUDIO.ctx, out = AUDIO.mus;
+  if (kind === 'D') { thump(110, 55, 0.25, vel * 0.7, t - a.currentTime, out); return; }
+  const n = Math.floor(a.sampleRate * 0.08), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+  const s = a.createBufferSource(); s.buffer = b; const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2400;
+  const g = a.createGain(); g.gain.value = vel * 0.45; s.connect(f); f.connect(g); g.connect(out); s.start(t);
+}
+function buildPiece(th) { // returns a list of [beatOffset, kind, midi, beats, vel] for one loop
+  const rnd = seeded(th.seed), sc = MODES[th.mode], notes = [];
+  const deg = d => { const o = Math.floor(d / sc.length); return th.root + sc[((d % sc.length) + sc.length) % sc.length] + 12 * o; };
+  // a melody of two phrases: A A' B A
+  const phrase = bars => { const out = []; let prev = 4; for (const b of bars) { for (let k = 0; k < th.beats; k++) {
+    const chordTone = [b, b + 2, b + 4][Math.floor(rnd() * 3)] + 7;
+    let n = k === 0 ? chordTone : prev + (rnd() < 0.5 ? 1 : -1) * (rnd() < 0.7 ? 1 : 2);
+    n = clamp(n, 5, 13); prev = n; const split = rnd() < 0.3 && k < th.beats - 1;
+    out.push([n, split]); } } return out; };
+  const half = th.prog.length / 2, A = phrase(th.prog.slice(0, half)), B = phrase(th.prog.slice(half));
+  const mel = th.prog.length >= 16 ? [...A, ...B] : [...A, ...A.map(([n, s], i) => [i === A.length - 1 ? 7 : n, s])];
+  const prog = th.prog.length >= 16 ? th.prog : [...th.prog, ...th.prog];
+  prog.forEach((b, bar) => {
+    const t0 = bar * th.beats;
+    if (th.chorale) { for (const off of [0, 2, 4, 7]) notes.push([t0, th.lead, deg(b + off) + (off === 7 ? 0 : 12), th.beats, 0.22]); }
+    else {
+      notes.push([t0, th.bass, deg(b) - 12, th.beats, 0.5]);
+      if (th.beats >= 3) notes.push([t0 + 1, th.bass, deg(b + 4) - 12, 1, 0.3]);
+      if (th.beats >= 3) notes.push([t0 + 2, th.bass, deg(b + 2) - 12 + 12, 1, 0.25]);
+      for (let k = 0; k < th.beats; k++) {
+        const [n, split] = mel[bar * th.beats + k] || [7, false];
+        if (split) { notes.push([t0 + k, th.lead, deg(n), 0.5, 0.3]); notes.push([t0 + k + 0.5, th.lead, deg(n + 1), 0.5, 0.25]); }
+        else notes.push([t0 + k, th.lead, deg(n), 1, 0.3]);
+      }
+    }
+    if (th.drone && bar % 2 === 0) notes.push([t0, 'drone', th.root - 12, th.beats * 2, 0.4]);
+    if (th.perc) { const steps = th.perc.length, per = th.beats / steps * (th.beats === 2 ? 2 : 1);
+      for (let i = 0; i < steps; i++) { const c = th.perc[i]; if (c !== '.' && i * per < th.beats) notes.push([t0 + i * per, 'drum:' + c, 0, 0, c === 'D' ? 0.6 : 0.4]); } }
+  });
+  return { notes, length: prog.length * th.beats };
+}
+function musicPlay(f) {
+  if (!AUDIO.ctx || !AUDIO.musicOn) return;
+  const th = THEMES[f] || THEMES.none;
+  if (AUDIO.theme && AUDIO.theme.th === th) return;
+  musicStop(true);
+  const piece = buildPiece(th), spb = 60 / th.bpm, a = AUDIO.ctx;
+  const st = AUDIO.theme = { th, piece, spb, start: a.currentTime + 0.3, next: 0 };
+  AUDIO.mus.gain.cancelScheduledValues(a.currentTime); AUDIO.mus.gain.setTargetAtTime(0.55, a.currentTime, 0.6);
+  const sched = () => {
+    if (AUDIO.theme !== st) return;
+    const horizon = a.currentTime + 0.6;
+    for (;;) {
+      const loop = Math.floor(st.next / piece.notes.length), ev = piece.notes[st.next % piece.notes.length];
+      const t = st.start + (loop * piece.length + ev[0]) * spb;
+      if (t > horizon) break;
+      if (t >= a.currentTime - 0.05) {
+        if (ev[1].startsWith('drum:')) drum(ev[1].slice(5), t, ev[4]);
+        else voice(ev[1], mtof(ev[2]), t, ev[3] * spb * 0.98, ev[4]);
+      }
+      st.next++;
+    }
+  };
+  sched(); AUDIO.timer = setInterval(sched, 150);
+}
+function musicStop(quick) {
+  if (AUDIO.timer) clearInterval(AUDIO.timer); AUDIO.timer = null; AUDIO.theme = null;
+  if (AUDIO.ctx) { const t = AUDIO.ctx.currentTime; AUDIO.mus.gain.cancelScheduledValues(t); AUDIO.mus.gain.setTargetAtTime(0, t, quick ? 0.05 : 0.5); }
+}
+const themeName = f => (THEMES[f] || THEMES.none).name;
+
+// ================= PORT SCREEN: a painted view of the harbour, icon tabs, goods by category =================
+const TAB_ICONS = {
+  market: '<path d="M10 3v14M5 17h10M3 6h14M3 6l-2 5h4zM17 6l-2 5h4z"/><circle cx="10" cy="3" r="1"/>',
+  yard: '<path d="M2 12h16l-2 4H4zM10 3v9M10 4l5 6h-5"/><path d="M5 8l2-2"/>',
+  tavern: '<path d="M4 6h9v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM13 8h2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2h-2M4 6c0-2 2-3 4.5-3S13 4 13 6"/>',
+  harbour: '<path d="M5 3h10v12a2 2 0 0 1-2 2H5zM5 3a2 2 0 0 0-2 2v1h2M8 7h5M8 10h5M8 13h3"/><circle cx="15" cy="16" r="2.2"/>',
+  bank: '<ellipse cx="10" cy="5" rx="6" ry="2"/><path d="M4 5v3c0 1.1 2.7 2 6 2s6-.9 6-2V5M4 8v3c0 1.1 2.7 2 6 2s6-.9 6-2V8M4 11v3c0 1.1 2.7 2 6 2s6-.9 6-2v-3"/>',
+  fleet: '<path d="M2 15h8l-1 2H3zM6 4v11M6 5l3 8H6M12 13h6l-1 2h-4zM15 6v7M15 7l2.5 5H15"/>',
+  holdings: '<path d="M4 17V8l3-2 3 2v9M10 17V5l3-2 3 2v12M2 17h16M6 11h2M12 8h2M12 12h2"/>',
+};
+const tabIcon = t => `<svg viewBox="0 0 20 20" aria-hidden="true">${TAB_ICONS[t] || ''}</svg>`;
+const GOOD_CATS = [
+  ['staples', 'Staples', ['grain', 'wine', 'oil', 'salt', 'fish', 'coffee', 'horses']],
+  ['materials', 'Materials', ['timber', 'alum', 'wax', 'hides', 'logwood', 'cochineal', 'incense']],
+  ['textiles', 'Textiles', ['cloth', 'silk', 'calico']],
+  ['luxuries', 'Luxuries', ['spices', 'sugar', 'furs', 'ivory', 'gold', 'silver', 'pearls', 'cinnamon']],
+];
+const catOf = g => (GOOD_CATS.find(c => c[2].includes(g)) || ['other', 'Other'])[0];
+let marketFilter = 'best';
+function townStyle(f) {
+  return ({ ottoman: 'islamic', barbary: 'islamic', morocco: 'islamic', crimea: 'islamic', spain: 'iberian', portugal: 'iberian', france: 'french', huguenot: 'french',
+    venice: 'italian', genoa: 'italian', ragusa: 'italian', knights: 'fortress', player: 'fortress', none: 'empty', cossack: 'empty', england: 'french', gujarat: 'islamic', mughal: 'islamic', calicut: 'islamic', swahili: 'islamic' })[f] || 'italian';
+}
+// Paint the harbour scene for a port. Deterministic per port; light follows the hour.
+function paintHarbour(cv, p) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), W = cv.clientWidth || 760, H = cv.clientHeight || 132;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const rnd = seeded(Math.floor(hash(p.id) * 100000) + 1), hr = curDate().getUTCHours();
+  const night = hr < 6 || hr >= 20, dusk = (hr >= 17 && hr < 20) || (hr >= 6 && hr < 8);
+  const [lo, la] = [p.lon, p.lat], dry = la < 33 || (lo > 33 && la < 37), green = la > 43 || lo < -7;
+  // sky
+  const sky = g.createLinearGradient(0, 0, 0, H * 0.62);
+  if (night) { sky.addColorStop(0, '#0b1626'); sky.addColorStop(1, '#22344a'); }
+  else if (dusk) { sky.addColorStop(0, '#3d4f78'); sky.addColorStop(0.6, '#d8895a'); sky.addColorStop(1, '#f1c27d'); }
+  else { sky.addColorStop(0, '#6fa3c6'); sky.addColorStop(1, dry ? '#ecdcb6' : '#cfe0e3'); }
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+  // sun or moon
+  g.fillStyle = night ? '#e9e4d2' : dusk ? '#ffdf9a' : 'rgba(255,248,220,0.9)';
+  g.beginPath(); g.arc(W * (0.15 + rnd() * 0.7), H * (night ? 0.2 : dusk ? 0.48 : 0.18), night ? 7 : 11, 0, TAU); g.fill();
+  if (night) { g.fillStyle = 'rgba(255,255,255,0.7)'; for (let i = 0; i < 40; i++) g.fillRect(rnd() * W, rnd() * H * 0.45, 1, 1); }
+  // hills in two layers
+  const hill = (base, amp, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(0, H); for (let x = 0; x <= W; x += 8) g.lineTo(x, base - amp * (0.5 + 0.5 * Math.sin(x / (60 + rnd() * 2) + rnd() * 0.3)) - amp * 0.5 * Math.sin(x / 23)); g.lineTo(W, H); g.fill(); };
+  const far = night ? '#1d2b39' : dry ? '#c9b083' : green ? '#7d9a77' : '#a3a27a', near = night ? '#16222e' : dry ? '#b09466' : green ? '#5f7f58' : '#8b8a5e';
+  if (p.f !== 'none') hill(H * 0.5, H * 0.14, far);
+  hill(H * 0.6, H * 0.1, near);
+  // town
+  const style = townStyle(p.f), wall = night ? '#4a4c52' : style === 'islamic' || style === 'iberian' ? '#efe6d2' : '#d9c8a8';
+  const roof = night ? '#2c2d33' : style === 'french' ? '#4e5560' : style === 'islamic' ? '#d8cfbb' : '#b35a3c';
+  const baseY = H * 0.66, n = style === 'empty' ? 0 : 14 + p.yard * 8;
+  const cx0 = W * 0.18, span = W * 0.64;
+  const houses = [];
+  for (let i = 0; i < n; i++) houses.push([cx0 + rnd() * span, 8 + rnd() * 14, 6 + rnd() * 16 * (1 - Math.abs(rnd() - 0.5))]);
+  houses.sort((a, b) => b[2] - a[2]);
+  for (const [x, w, h] of houses) {
+    const y = baseY - h;
+    g.fillStyle = wall; g.fillRect(x, y, w, h);
+    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(x + w * 0.65, y, w * 0.35, h);
+    if (style === 'islamic' || style === 'iberian') { g.fillStyle = roof; g.fillRect(x - 1, y - 2, w + 2, 2); }
+    else { g.fillStyle = roof; g.beginPath(); g.moveTo(x - 1, y); g.lineTo(x + w / 2, y - (style === 'french' ? 9 : 5)); g.lineTo(x + w + 1, y); g.fill(); }
+    if (night && rnd() < 0.5) { g.fillStyle = '#f6c56b'; g.fillRect(x + w * 0.3, y + h * 0.4, 2, 2); }
+  }
+  // landmark
+  const lx = cx0 + span * (0.35 + rnd() * 0.3), tw = 12;
+  g.fillStyle = wall;
+  if (style === 'islamic') {
+    g.beginPath(); g.arc(lx, baseY - 26, 16, Math.PI, 0); g.fill(); g.fillRect(lx - 16, baseY - 26, 32, 26);
+    for (const mx of [lx - 26, lx + 24]) { g.fillRect(mx, baseY - 58, 5, 58); g.beginPath(); g.moveTo(mx - 1, baseY - 58); g.lineTo(mx + 2.5, baseY - 68); g.lineTo(mx + 6, baseY - 58); g.fill(); }
+  } else if (style === 'italian') {
+    g.fillRect(lx, baseY - 62, tw, 62); g.fillStyle = roof; g.beginPath(); g.moveTo(lx - 1, baseY - 62); g.lineTo(lx + tw / 2, baseY - 74); g.lineTo(lx + tw + 1, baseY - 62); g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(lx + 3, baseY - 56, 2, 6); g.fillRect(lx + 7, baseY - 56, 2, 6);
+  } else if (style === 'french') {
+    g.fillRect(lx - 10, baseY - 30, 30, 30); g.fillRect(lx, baseY - 52, tw, 22); g.fillStyle = roof; g.beginPath(); g.moveTo(lx - 1, baseY - 52); g.lineTo(lx + tw / 2, baseY - 80); g.lineTo(lx + tw + 1, baseY - 52); g.fill();
+  } else if (style === 'iberian' || style === 'fortress') {
+    g.fillRect(lx - 16, baseY - 40, 44, 40); for (let k = 0; k < 6; k++) g.fillRect(lx - 16 + k * 8, baseY - 45, 4, 5);
+    g.fillRect(lx + 4, baseY - 58, 14, 18); for (let k = 0; k < 3; k++) g.fillRect(lx + 4 + k * 5, baseY - 62, 3, 4);
+  }
+  if (style !== 'empty') drawFlagOn(g, p.f, style === 'islamic' ? lx + 24 : lx + 6, baseY - (style === 'islamic' ? 68 : style === 'french' ? 80 : 74), 18);
+  // sea
+  const sea = g.createLinearGradient(0, baseY, 0, H);
+  sea.addColorStop(0, night ? '#13283a' : '#3b7b8c'); sea.addColorStop(1, night ? '#0a1824' : '#1d4c5f');
+  g.fillStyle = sea; g.fillRect(0, baseY, W, H - baseY);
+  g.strokeStyle = night ? 'rgba(255,240,200,0.15)' : 'rgba(255,255,255,0.25)'; g.lineWidth = 1;
+  for (let i = 0; i < 30; i++) { const x = rnd() * W, y = baseY + 4 + rnd() * (H - baseY - 6); g.beginPath(); g.moveTo(x, y); g.lineTo(x + 6 + rnd() * 12, y); g.stroke(); }
+  // mole and moored ships
+  if (style !== 'empty') { g.fillStyle = night ? '#3a3a3a' : '#9b8e76'; g.fillRect(W * 0.62, baseY - 2, W * 0.3, 5); }
+  const boats = style === 'empty' ? 0 : 2 + p.yard;
+  for (let i = 0; i < boats; i++) {
+    const x = W * (0.5 + rnd() * 0.32), y = baseY + 10 + rnd() * (H - baseY - 18), s = 0.7 + rnd() * 0.5;
+    g.fillStyle = '#3d2a17'; g.beginPath(); g.moveTo(x - 16 * s, y); g.lineTo(x + 16 * s, y); g.lineTo(x + 12 * s, y + 5 * s); g.lineTo(x - 12 * s, y + 5 * s); g.fill();
+    g.strokeStyle = '#2a1c0e'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 22 * s); g.stroke();
+    g.fillStyle = night ? '#8a8578' : '#f2ead8'; g.beginPath(); g.moveTo(x + 1, y - 21 * s); g.lineTo(x + 13 * s, y - 4 * s); g.lineTo(x + 1, y - 4 * s); g.fill();
+  }
+  // soft fade for the header text
+  const fade = g.createLinearGradient(0, 0, 0, H); fade.addColorStop(0, 'rgba(23,19,13,0.0)'); fade.addColorStop(0.55, 'rgba(23,19,13,0.0)'); fade.addColorStop(1, 'rgba(23,19,13,0.85)');
+  g.fillStyle = fade; g.fillRect(0, 0, W, H);
+}
+function drawFlagOn(g, f, x, y, w) {
+  const img = FLAG_IMG[f]; if (!img) return; const h = w * 2 / 3;
+  g.strokeStyle = '#2a1c0e'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y + h + 6); g.lineTo(x, y - 2); g.stroke();
+  g.drawImage(img, x, y, w, h); g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 0.6; g.strokeRect(x, y, w, h);
+}
+function marketRow(p, g) {
+  const b = buyPrice(p, g), s = sellPrice(p, g), have = S.cargo[g] || 0, basis = S.basis[g];
+  const tag = p.cheap.includes(g) ? '<span class="tag good">local</span>' : p.dear.includes(g) ? '<span class="tag hot">in demand</span>' : '';
+  const pl = have && basis ? (s - basis) : null;
+  return `<div class="mrow">
+    <div class="mname"><b>${GOODS[g].name}</b> ${tag}<small>per ${GOODS[g].unit} · stock ${Math.floor(market(p)[g])}</small></div>
+    <div class="mnum"><small>Buy</small><b>${b}</b></div>
+    <div class="mnum"><small>Sell</small><b>${s}</b>${pl != null ? `<small class="${pl >= 0 ? 'up' : 'down'}">${pl >= 0 ? '+' : ''}${Math.round(pl)}</small>` : ''}${hasLt('factor') ? bestKnown(g, p) : ''}</div>
+    <div class="mnum"><small>Hold</small><b>${have}</b></div>
+    <div class="macts">
+      <button class="btn sm" data-buy="${g}" data-n="1">Buy 1</button><button class="btn sm" data-buy="${g}" data-n="10">10</button>
+      <button class="btn sm" data-sell="${g}" data-n="1" ${have ? '' : 'disabled'}>Sell 1</button><button class="btn sm" data-sell="${g}" data-n="999" ${have ? '' : 'disabled'}>All</button>
+    </div></div>`;
+}
+function marketGoodsHTML(p) {
+  const keys = GOOD_KEYS;
+  const chips = [['best', 'Highlights'], ...GOOD_CATS.map(c => [c[0], c[1]]), ['all', 'All goods']];
+  let html = `<div class="chips" role="group" aria-label="Show goods">${chips.map(([k, l]) => `<button class="chip-btn" data-mfilter="${k}" aria-pressed="${marketFilter === k}">${l}</button>`).join('')}</div>`;
+  const section = (title, list) => list.length ? `<h5 class="mgroup">${title}</h5><div class="mtable">${list.map(g => marketRow(p, g)).join('')}</div>` : '';
+  if (marketFilter === 'best') {
+    const hold = keys.filter(g => S.cargo[g]), cheap = keys.filter(g => p.cheap.includes(g) && !S.cargo[g]), dear = keys.filter(g => p.dear.includes(g) && !S.cargo[g] && !p.cheap.includes(g));
+    const body = section('Your cargo', hold) + section('Cheap here', cheap) + section('In demand here', dear);
+    html += body || '<p class="mute">Nothing special in this market. Browse by category above.</p>';
+  } else if (marketFilter === 'all') {
+    for (const [, title, list] of GOOD_CATS) html += section(title, list.filter(g => keys.includes(g)));
+  } else {
+    const c = GOOD_CATS.find(x => x[0] === marketFilter); html += section(c[1], c[2].filter(g => keys.includes(g)));
+  }
+  return html;
+}
+
 // ================= RELIEF: shaded mountains and sea depth, rendered once at load =================
 const RIDGES = [ // [amplitude, width in nm, [[lon,lat]...]]
   [1.0, 40, [[5.8,44.1],[6.9,45.0],[7.6,45.9],[9.0,46.4],[10.5,46.6],[12.0,46.8],[13.5,46.6],[14.8,46.6]]],
@@ -2961,15 +3640,90 @@ const RIDGES = [ // [amplitude, width in nm, [[lon,lat]...]]
   [0.95, 30, [[-9.6,30.7],[-8.0,31.1],[-6.5,31.6],[-5.0,32.2],[-4.0,32.6]]], [0.55, 28, [[-9.0,29.6],[-7.5,30.0],[-6.0,30.2]]], [0.55, 30, [[-5.5,33.4],[-4.5,33.0],[-3.5,32.8]]],
   [0.6, 16, [[-8.0,40.3],[-7.4,40.4]]], [0.4, 30, [[-8.5,42.2],[-7.5,42.5]]],
   [1.2, 6, [[-16.64,28.27]]], [0.6, 5, [[-15.6,27.97]]], [0.6, 5, [[-17.0,32.75]]], [0.5, 5, [[-25.5,37.8]]], [0.8, 5, [[-24.38,14.95]]], [0.4, 4, [[-23.65,15.1]]],
+  [0.9, 14, [[-76.9,20.0],[-76.0,20.1]], 'carib'], [1.0, 16, [[-72.5,18.6],[-71.0,19.0],[-70.4,18.9]], 'carib'], [0.7, 8, [[-76.8,18.05],[-76.5,18.05]], 'carib'],
+  [1.2, 40, [[-99.0,22.5],[-98.5,20.0],[-97.2,18.9],[-96.5,17.0]], 'carib'], [0.9, 30, [[-92.5,16.0],[-90.0,15.0],[-87.0,14.3],[-85.0,12.5],[-84.0,10.0],[-82.5,8.8]], 'carib'],
+  [1.3, 12, [[-73.7,10.85]], 'carib'], [0.8, 22, [[-70.5,10.3],[-67.5,10.3],[-64.5,10.2]], 'carib'], [0.5, 10, [[-66.5,18.2]], 'carib'],
+  [0.9, 30, [[35.5,29.0],[37.5,26.0],[39.5,22.5],[41.5,19.0],[43.5,15.5],[44.0,13.8]], 'indian'], [1.1, 45, [[37.5,14.0],[38.5,11.5],[39.5,9.0],[38.5,7.0]], 'indian'],
+  [1.0, 45, [[48.0,31.5],[51.0,29.8],[54.0,28.5],[57.5,27.6],[61.0,26.5]], 'indian'], [0.8, 15, [[56.3,24.5],[57.5,23.2],[58.6,23.0]], 'indian'],
+  [0.8, 18, [[73.8,20.0],[73.6,17.5],[74.2,15.0],[75.0,13.0],[76.0,11.0],[77.0,9.0]], 'indian'], [1.3, 10, [[37.35,-3.07]], 'indian'], [0.5, 30, [[45.5,9.5],[48.5,9.8]], 'indian'],
   [0.6, 45, [[-12.0,11.5],[-11.0,10.5],[-10.5,9.5]]], [0.45, 40, [[-9.0,8.5],[-7.5,7.8]]], [0.7, 60, [[4.5,23.3],[5.8,23.0]]], [0.55, 55, [[8.5,25.5],[10.0,25.0]]], [0.4, 45, [[-12.0,21.0],[-11.0,20.0]]],
 ];
-let seaImg = null, landImg = null;
-function buildRelief() {
+let seaImg = null, landImg = null; // (kept for older code paths; RELIEF holds the images per chart)
+const smooth01 = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+const mixc = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const BIO = { med: [158, 154, 100], green: [112, 138, 80], forest: [92, 116, 70], ochre: [194, 168, 112], steppe: [166, 164, 102], sand: [228, 205, 150],
+  rock: [206, 180, 130], savanna: [190, 172, 104], jungle: [70, 102, 58], oasis: [92, 132, 66] };
+let NILE_SEGS = null;
+function biomeCarib(lo, la, dc, n) {
+  const ss = (a, b, x) => smooth01((x - a) / (b - a));
+  let c = BIO.jungle;
+  if (la > 27 && lo < -82) c = mixc(BIO.green, BIO.forest, 0.4);                         // Gulf coast pine woods
+  else if (la > 24 && lo < -95) c = BIO.ochre;                                            // the dry north of New Spain
+  else if (la > 19 && lo < -86.5 && lo > -91.5) c = mixc(BIO.savanna, BIO.green, 0.4);    // Yucatán scrub
+  else if (la < 13 && lo > -73 && lo < -63) c = mixc(BIO.savanna, BIO.rock, 0.35);        // the dry coast of Tierra Firme
+  else if (la > 17 && lo > -86) c = mixc(BIO.green, BIO.jungle, 0.55 + 0.3 * ss(0, 40, dc)); // the islands
+  const v = 0.92 + 0.16 * n; return [c[0] * v, c[1] * v, c[2] * v];
+}
+function biomeIndian(lo, la, dc, n) {
+  const ss = (a, b, x) => smooth01((x - a) / (b - a));
+  let c = BIO.sand;
+  if (lo > 72.8 && la < 16.5) c = mixc(BIO.jungle, BIO.forest, 0.3);                     // Malabar and the Konkan
+  else if (lo > 73.5 && la < 21) c = mixc(BIO.savanna, BIO.forest, 0.3);                 // the Deccan
+  else if (lo > 68 && la >= 20) c = mixc(BIO.ochre, BIO.savanna, 0.4);                   // Gujarat and Sindh
+  else if (lo > 79 && la < 10) c = BIO.jungle;                                           // Ceylon
+  else if (la < 2 && lo < 42.5) c = mixc(BIO.savanna, BIO.green, 0.5 * (1 - ss(20, 90, dc)) + 0.2); // the Swahili coast
+  else if (la < 15 && lo < 43 && lo > 35) c = mixc(BIO.rock, BIO.savanna, 0.5);          // Abyssinia
+  else if (lo > 43 && lo < 45.5 && la > 13 && la < 17) c = mixc(BIO.rock, BIO.green, 0.3); // the Yemen highlands
+  else if (lo > 50 && la > 26) c = mixc(BIO.rock, BIO.ochre, 0.5);                       // Persia
+  else c = mixc(BIO.sand, BIO.rock, 0.3 + 0.4 * n);                                       // Arabia and Somalia
+  const v = 0.92 + 0.16 * n; return [c[0] * v, c[1] * v, c[2] * v];
+}
+function biomeRGB(lo, la, dc, n) {
+  const ss = (a, b, x) => smooth01((x - a) / (b - a));
+  let c;
+  const africa = la < 37.3 && !(lo > 26 && la > 36.2) && !(lo > 34.5 && la > 31) && !(lo > 9.2 && la > 36.9 && lo < 26);
+  if (lo < -14.5) c = la > 36 ? BIO.green : la > 31 ? BIO.med : la > 26 ? mixc(BIO.rock, BIO.med, 0.4) : BIO.savanna; // Atlantic islands
+  else if (africa) {
+    if (la < 11.5) c = mixc(BIO.jungle, BIO.savanna, ss(9, 11.5, la));
+    else if (la < 16.5) c = mixc(BIO.savanna, BIO.sand, ss(13.5, 16.5, la));
+    else {
+      const desert = BIO.sand;
+      const coastFertile = (lo < 11 && la > 33) ? 1 - ss(70, 170, dc) : (lo > 34 ? 0.7 - ss(30, 120, dc) : 0.5 - ss(8, 40, dc));
+      const north = ss(29.5, 33, la);
+      c = mixc(desert, mixc(BIO.med, BIO.ochre, 0.35), clamp(coastFertile, 0, 1) * north);
+      if (lo > 29 && lo < 34 && la < 32) { // the Nile valley and delta
+        if (!NILE_SEGS) { NILE_SEGS = []; for (let i = 1; i < NILE_VALLEY.length; i++) { const [ax, ay] = proj(...NILE_VALLEY[i - 1]), [bx, by] = proj(...NILE_VALLEY[i]); NILE_SEGS.push({ ax, ay, bx, by }); } }
+        const [px, py] = proj(lo, la); let d = 1e9; for (const sg of NILE_SEGS) d = Math.min(d, segDist(px, py, sg));
+        const delta = la > 30 && la < 31.6 && lo > 29.9 && lo < 32.3 ? 1 - ss(0, 1, Math.abs(lo - 31.1) / (1.25 * (la - 29.95))) : 0;
+        c = mixc(c, BIO.oasis, Math.max(1 - ss(4, 14, d), delta));
+      }
+    }
+  } else {
+    const coastal = 1 - ss(40, 130, dc);
+    let inland = BIO.green;
+    if (lo < -1.5 && la < 42.6 && la > 37.5 && lo > -8.6) inland = BIO.ochre;                 // the Castilian meseta
+    else if (lo > 27 && lo < 42 && la < 41.3 && la > 36.5) inland = mixc(BIO.ochre, BIO.steppe, 0.4); // the Anatolian plateau
+    else if (la > 44.8 && lo > 27.5) inland = BIO.steppe;                                    // the Pontic steppe
+    else if (lo > 34.5 && la < 37) inland = BIO.ochre;                                        // Syria
+    else if (lo > 13 && lo < 28 && la > 40.5) inland = BIO.forest;                            // the Balkans
+    else if (la > 44.5 || (lo < -1 && la > 42.6)) inland = BIO.green;                         // Atlantic and northern Europe
+    else inland = mixc(BIO.med, BIO.green, 0.4);
+    let coast = (lo < -1.2 && la > 42.6) || (la > 45.2) ? BIO.green : BIO.med;               // Biscay is green, the Mediterranean shore olive
+    if (lo < -7.5 && la < 42.6) coast = mixc(BIO.med, BIO.green, 0.5);                        // Atlantic Portugal
+    c = mixc(inland, coast, coastal);
+  }
+  const v = 0.92 + 0.16 * n; return [c[0] * v, c[1] * v, c[2] * v];
+}
+const RELIEF = {};
+function ensureRelief(th) { if (!RELIEF[th]) buildRelief(th); }
+function buildRelief(th = 'med') {
   try {
-    const R = 2, w = Math.ceil(WORLD_W / R), h = Math.ceil(WORLD_H / R), N = w * h;
+    const TT = THEATRES[th];
+    const R = 2, w = Math.ceil(TT.w / R), h = Math.ceil(TT.h / R), N = w * h;
     // land mask from the drawn coastline, so relief and outline agree
     const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
-    const mg = mc.getContext('2d'); mg.scale(1 / R, 1 / R); mg.fillStyle = '#000'; mg.fill(landFine);
+    const mg = mc.getContext('2d'); mg.scale(1 / R, 1 / R); mg.translate(-TT.ox, -TT.oy); mg.fillStyle = '#000'; mg.fill(landFine);
+    if (th === 'med') { const g = mg; g.globalCompositeOperation = 'destination-out'; g.lineWidth = RIVER_W; g.lineCap = 'round'; g.lineJoin = 'round'; for (const r of RIVERS) { g.beginPath(); r.pts.forEach(([lo, la], i) => { const [x, y] = proj(lo, la); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); } g.globalCompositeOperation = 'source-over'; }
     const md = mg.getImageData(0, 0, w, h).data, land = new Uint8Array(N);
     for (let i = 0; i < N; i++) land[i] = md[i * 4 + 3] > 127 ? 1 : 0;
     // distance to the coast, both ways (chamfer)
@@ -2993,8 +3747,9 @@ function buildRelief() {
     chamfer(dl); chamfer(dw);
     // mountain ranges, stamped with a gaussian profile
     const ridge = new Float32Array(N);
-    for (const [amp, wid, line] of RIDGES) {
-      const pts = line.map(([lo, la]) => proj(lo, la));
+    for (const [amp, wid, line, rth] of RIDGES) {
+      if ((rth || 'med') !== th) continue;
+      const pts = line.map(([lo, la]) => { const [x, y] = proj(lo, la, th); return [x - TT.ox, y - TT.oy]; });
       const stamps = [];
       if (pts.length === 1) stamps.push(pts[0]);
       for (let k = 1; k < pts.length; k++) {
@@ -3014,11 +3769,15 @@ function buildRelief() {
     }
     // value noise for texture
     const P = new Float32Array(4096); for (let i = 0; i < 4096; i++) P[i] = hash('n' + i);
+    // the open-ocean charts are drawn at a smaller scale, so they get a well-mixed hash (no diagonal banding) and broader hills
+    const mix = th === 'med' ? (x, y) => (x * 73 + y * 151) & 4095 : (x, y) => { let k = Math.imul(x, 374761393) ^ Math.imul(y, 668265263); k = Math.imul(k ^ (k >>> 13), 1274126177); return (k ^ (k >>> 16)) & 4095; };
+    const NS = th === 'med' ? 1 : 2.2;
     const vnoise = (x, y) => {
+      x /= NS; y /= NS;
       const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
       const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
-      const a = P[((xi * 73 + yi * 151) & 4095)], b = P[(((xi + 1) * 73 + yi * 151) & 4095)];
-      const c = P[((xi * 73 + (yi + 1) * 151) & 4095)], d = P[(((xi + 1) * 73 + (yi + 1) * 151) & 4095)];
+      const a = P[mix(xi, yi)], b = P[mix(xi + 1, yi)];
+      const c = P[mix(xi, yi + 1)], d = P[mix(xi + 1, yi + 1)];
       return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
     };
     const H = new Float32Array(N);
@@ -3052,7 +3811,9 @@ function buildRelief() {
         const hy = (H[Math.min(h - 1, y + 1) * w + x] - H[Math.max(0, y - 1) * w + x]) / (2 * R) * E * 60;
         const len = Math.hypot(hx, hy, 1), dot = (-hx * L[0] - hy * L[1] + L[2]) / len;
         const shade = 0.62 + 0.72 * Math.max(0, dot);
-        const [r, g, b] = tint(H[i]);
+        const [lo, la] = unproj(x * R + TT.ox, y * R + TT.oy), bio = (th === 'carib' ? biomeCarib : th === 'indian' ? biomeIndian : biomeRGB)(lo, la, dl[i] * R, vnoise(x * R / 40, y * R / 40));
+        const hc = tint(H[i]), k = smooth01((H[i] - 0.35) / 0.55); // lowlands take the biome colour, heights the rock and snow
+        const r = bio[0] * (1 - k) + hc[0] * k, g = bio[1] * (1 - k) + hc[1] * k, b = bio[2] * (1 - k) + hc[2] * k;
         L_[o] = Math.min(255, r * shade); L_[o + 1] = Math.min(255, g * shade); L_[o + 2] = Math.min(255, b * shade); L_[o + 3] = 255;
         S_[o] = 58; S_[o + 1] = 128; S_[o + 2] = 136; S_[o + 3] = 255;
       } else {
@@ -3063,17 +3824,27 @@ function buildRelief() {
       }
     }
     sc.getContext('2d').putImageData(sd, 0, 0); lc.getContext('2d').putImageData(ld, 0, 0);
-    seaImg = sc; landImg = lc;
-  } catch (e) { seaImg = landImg = null; }
+    RELIEF[th] = { sea: sc, land: lc };
+  } catch (e) { RELIEF[th] = { sea: null, land: null }; }
 }
 // paint sea depth, coastal shadow and shaded land in world space
-function drawSea() { if (seaImg) { ctx.imageSmoothingEnabled = true; ctx.drawImage(seaImg, 0, 0, WORLD_W, WORLD_H); } }
+function drawSea() { const T = TH(), r = RELIEF[curTh()]; if (r && r.sea) { ctx.imageSmoothingEnabled = true; ctx.drawImage(r.sea, T.ox, T.oy, T.w, T.h); } }
 function drawLand() {
   ctx.save(); ctx.translate(1.8, 1.8); ctx.fillStyle = 'rgba(3,14,20,0.38)'; ctx.fill(landFine); ctx.restore();
-  if (landImg) { ctx.save(); ctx.clip(landFine); ctx.drawImage(landImg, 0, 0, WORLD_W, WORLD_H); ctx.restore(); }
+  const T = TH(), r = RELIEF[curTh()];
+  if (r && r.land) { ctx.save(); ctx.clip(landFine); ctx.drawImage(r.land, T.ox, T.oy, T.w, T.h); ctx.restore(); }
   else { ctx.fillStyle = COL.land; ctx.fill(landFine); }
 }
-function drawBase() { drawSea(); drawLand(); }
+function drawBase() { drawSea(); drawLand(); drawRivers(); }
+function drawRivers() {
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const r of RIVERS) {
+    ctx.beginPath(); r.pts.forEach(([lo, la], i) => { const [x, y] = proj(lo, la); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.strokeStyle = 'rgba(70,95,60,0.55)'; ctx.lineWidth = RIVER_W + 3; ctx.stroke();
+    ctx.strokeStyle = '#3d7d86'; ctx.lineWidth = RIVER_W - 1; ctx.stroke();
+    ctx.strokeStyle = 'rgba(200,230,230,0.25)'; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+}
 
 // ================= 3D CAMERA: a gentle CSS tilt of the chart =================
 const TILT_DEG = 26;
@@ -3110,13 +3881,14 @@ function draw(now) {
   // keep the camera inside the chart: near the edges the ship moves off-centre instead of showing beyond the map
   // fully clamped at the widest zoom, easing off as you zoom in so the ship stays centred near the coasts
   const slack = clamp((z / minZoom() - 1) * 420, 0, 4000) / z;
-  const cx = clamp(S.x, view.ax / z - slack, WORLD_W - (W - view.ax) / z + slack), cy = clamp(S.y, view.ay / z - slack, WORLD_H - (H - view.ay) / z + slack);
+  const TT = TH(); ensureRelief(curTh());
+  const cx = clamp(S.x, TT.ox + view.ax / z - slack, TT.ox + TT.w - (W - view.ax) / z + slack), cy = clamp(S.y, view.ay / z - slack, TT.h - (H - view.ay) / z + slack);
   view.cx = cx; view.cy = cy;
   const AX = view.ax + (S.x - cx) * z, AY = view.ay + (S.y - cy) * z;
   const tx = view.ax - cx * z, ty = view.ay - cy * z;
   const close = z >= 2.2;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = seaImg ? 'rgb(10,40,54)' : COL.sea; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgb(10,40,54)'; ctx.fillRect(0, 0, W, H);
   // world space
   ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * tx, dpr * ty);
   const vx0 = cx - view.ax / z, vy0 = cy - view.ay / z, vx1 = cx + (W - view.ax) / z, vy1 = cy + (H - view.ay) / z;
@@ -3133,15 +3905,16 @@ function draw(now) {
   }
   // parallels & meridians every 2 degrees
   ctx.strokeStyle = COL.sea3; ctx.lineWidth = 1 / z; ctx.beginPath();
-  for (let lo = -6; lo <= 36; lo += 2) { const [x] = proj(lo, 0); ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_H); }
-  for (let la = 30; la <= 46; la += 2) { const [, y] = proj(0, la); ctx.moveTo(0, y); ctx.lineTo(WORLD_W, y); }
+  for (let lo = Math.ceil(TT.lon0 / 2) * 2; lo <= TT.lon1; lo += 2) { const [x] = proj(lo, 0, curTh()); ctx.moveTo(x, 0); ctx.lineTo(x, TT.h); }
+  for (let la = Math.ceil(TT.lat1 / 2) * 2; la <= TT.lat0; la += 2) { const [, y] = proj(0, la, curTh()); ctx.moveTo(TT.ox, y); ctx.lineTo(TT.ox + TT.w, y); }
   ctx.stroke();
+  ctx.save(); ctx.beginPath(); ctx.rect(TT.ox, 0, TT.w, TT.h); ctx.clip();
   // rhumb lines
   ctx.globalAlpha = close ? 0.28 : 0.5;
   ctx.lineWidth = 0.9 / z; ctx.strokeStyle = COL.gilt; ctx.stroke(rhumbPaths[0]);
   ctx.strokeStyle = COL.rhumbG; ctx.stroke(rhumbPaths[1]);
   ctx.strokeStyle = COL.rhumbR; ctx.stroke(rhumbPaths[2]);
-  ctx.globalAlpha = 1;
+  ctx.globalAlpha = 1; ctx.restore();
   // waves when close
   if (z >= 2.4) {
     const sp = 9, t = now / 1400;
@@ -3153,11 +3926,16 @@ function draw(now) {
     }
     ctx.stroke();
   }
-  // beyond the edges of the chart: Europe to the north, Asia to the east, Africa to the south-east; open ocean elsewhere
+  // beyond the edges of the chart
   ctx.fillStyle = COL.land;
-  const BIG = 8000, xN = proj(-4.5, 0)[0], xS = proj(6.2, 0)[0];
-  ctx.fillRect(WORLD_W - 2, -BIG, BIG, WORLD_H + 2 * BIG); ctx.fillRect(xN, -BIG, WORLD_W - xN + BIG, BIG + 2); ctx.fillRect(xS, WORLD_H - 2, WORLD_W - xS + BIG, BIG);
-  drawLand();
+  const BIG = 8000, MX = TT.ox + TT.w;
+  if (curTh() === 'med') { const xN = proj(-4.5, 0)[0], xS = proj(6.2, 0)[0];
+    ctx.fillRect(MX - 2, -BIG, BIG, TT.h + 2 * BIG); ctx.fillRect(xN, -BIG, MX - xN + BIG, BIG + 2); ctx.fillRect(xS, TT.h - 2, MX - xS + BIG, BIG); }
+  else if (curTh() === 'carib') { const xF = proj(-81.4, 0, 'carib')[0]; ctx.fillRect(TT.ox - BIG, -BIG, xF - TT.ox + BIG, BIG + 2); ctx.fillRect(TT.ox - BIG, -BIG, BIG + 2, TT.h + 2 * BIG); ctx.fillRect(TT.ox - BIG, TT.h - 2, TT.w + 2 * BIG, BIG);
+    ctx.fillStyle = 'rgb(10,40,54)'; ctx.fillRect(MX, -BIG, BIG, TT.h + 2 * BIG); ctx.fillRect(xF, -BIG, MX - xF, BIG); }
+  else { const xA = proj(40.3, 0, 'indian')[0]; ctx.fillRect(TT.ox - BIG, -BIG, TT.w + 2 * BIG, BIG + 2); ctx.fillRect(TT.ox - BIG, -BIG, BIG + 2, TT.h + 2 * BIG); ctx.fillRect(MX - 2, -BIG, BIG, TT.h + 2 * BIG);
+    ctx.fillRect(TT.ox - BIG, TT.h - 2, xA - TT.ox + BIG, BIG); ctx.fillStyle = 'rgb(10,40,54)'; ctx.fillRect(xA, TT.h, MX - xA, BIG); }
+  drawLand(); drawRivers();
   ctx.lineJoin = 'round';
   if (close) { ctx.strokeStyle = 'rgba(220,235,230,0.3)'; ctx.lineWidth = 1.4; ctx.stroke(landCoast); }
   ctx.strokeStyle = COL.ink; ctx.lineWidth = 1.4 / z; ctx.stroke(landCoast);
@@ -3301,13 +4079,13 @@ function drawMini() {
   const c = $('#mini'); if (!c) return;
   const show = view.z >= 2.2 && !modalOpen;
   c.hidden = !show; if (!show) return;
-  const d = Math.min(window.devicePixelRatio || 1, 2), w = 190, h = Math.round(190 * WORLD_H / WORLD_W);
-  if (c.width !== w * d) { c.width = w * d; c.height = h * d; }
-  const g = c.getContext('2d'), k = w / WORLD_W;
+  const T = TH(), d = Math.min(window.devicePixelRatio || 1, 2), w = 190, h = Math.round(190 * T.h / T.w);
+  if (c.width !== w * d || c.height !== h * d) { c.width = w * d; c.height = h * d; }
+  const g = c.getContext('2d'), k = w / T.w;
   g.setTransform(d, 0, 0, d, 0, 0); g.fillStyle = COL.sea; g.fillRect(0, 0, w, h);
-  g.setTransform(d * k, 0, 0, d * k, 0, 0); g.fillStyle = COL.land; g.fill(landPath);
+  g.setTransform(d * k, 0, 0, d * k, -T.ox * d * k, 0); g.fillStyle = COL.land; g.fill(landPath);
   for (const r of REGIONS) { const v = regionRisk(r.id); if (v === 2) { g.fillStyle = 'rgba(224,99,74,0.25)'; g.beginPath(); g.arc(r.x, r.y, r.r * 0.6, 0, TAU); g.fill(); } }
-  for (const p of PORTS) if (S.discovered[p.id]) { g.fillStyle = FACTIONS[p.f].color; g.fillRect(p.x - 6, p.y - 6, 12, 12); }
+  for (const p of TPORTS()) if (S.discovered[p.id]) { g.fillStyle = FACTIONS[p.f].color; g.fillRect(p.x - 6, p.y - 6, 12, 12); }
   g.strokeStyle = COL.paper; g.lineWidth = 2 / k * 0.6;
   const vcx = view.cx ?? S.x, vcy = view.cy ?? S.y;
   g.strokeRect(vcx - view.ax / view.z, vcy - view.ay / view.z, view.W / view.z, view.H / view.z);
@@ -3385,9 +4163,10 @@ function drawWindDial() {
 
 // ================= UI =================
 function toast(title, body, kind) {
+  if (voyageMute) { voyageMute.push(title + ': ' + (body || '')); return; }
   const el = document.createElement('div');
   el.className = 'toast' + (kind ? ' ' + kind : '');
-  el.innerHTML = `<strong>${esc(title)}</strong>${body ? `<span>${esc(body)}</span>` : ''}`;
+  el.innerHTML = `<strong>${esc(title)}</strong>${body ? String(body).split('\n').map(l => `<span>${esc(l)}</span>`).join('') : ''}`;
   const box = $('#toasts'); box.prepend(el);
   while (box.children.length > 4) box.lastChild.remove();
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 5200);
@@ -3398,6 +4177,7 @@ function openModal(id) {
 }
 function closeModal() {
   if (modalOpen === 'start') return;
+  if (modalOpen === 'port') musicStop();
   document.querySelectorAll('.modal').forEach(m => m.hidden = true);
   $('#scrim').hidden = true; modalOpen = null;
 }
@@ -3432,6 +4212,8 @@ function updateHUD() {
   document.querySelectorAll('#sails button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.sail === S.sail)));
   $('#fastBtn').setAttribute('aria-pressed', String(timeScale > 1));
   $('#tiltBtn').setAttribute('aria-pressed', String(tilt3D));
+  $('#sndBtn').setAttribute('aria-pressed', String(AUDIO.sfxOn || AUDIO.musicOn));
+  if (AUDIO.ctx) audioTick();
   $('#capBtn').classList.toggle('dot', S.points > 0);
   $('#tips').hidden = !!S.flags.tips || !!modalOpen;
   drawWindDial();
@@ -3475,12 +4257,13 @@ function portTabsFor(p) {
 function renderPort() {
   const p = portById(S.docked); if (!p) return;
   const f = FACTIONS[p.f];
-  $('#portHead').innerHTML = `<span class="flag lg" style="${flagCss(p.f)}"></span><div><h2>${esc(p.name)}</h2><p>${p.f === 'none' ? 'Unclaimed anchorage' : p.f === 'player' ? 'Your own harbour' : `Held by the ${f.name}${p.f !== p.f0 ? ` (taken from the ${FACTIONS[p.f0].adj})` : ''} · ${f.ruler}`}${p.id === 'birgu' && siegeActive() ? ' · <em class="bad">besieged</em>' : ''}</p>
-    <p class="regline"><i class="risk r${regionRisk(p.region)}"></i>${REGIONS.find(r => r.id === p.region).name}: ${RISK_NAMES[regionRisk(p.region)].toLowerCase()}${S.bounty[p.f] ? ` · <em class="bad">wanted here, ${fmt(S.bounty[p.f])} d</em>` : ''}</p></div>
+  $('#portHead').innerHTML = `<canvas class="harbour" aria-hidden="true"></canvas><span class="flag lg" style="${flagCss(p.f)}"></span><div><h2>${esc(p.name)}</h2><p>${p.f === 'none' ? 'Unclaimed anchorage' : p.f === 'player' ? 'Your own harbour' : `Held by the ${f.name}${p.f !== p.f0 ? ` (taken from the ${FACTIONS[p.f0].adj})` : ''} · ${f.ruler}`}${p.id === 'birgu' && siegeActive() ? ' · <em class="bad">besieged</em>' : ''}</p>
+    <p class="regline"><i class="risk r${regionRisk(p.region)}"></i>${REGIONS.find(r => r.id === p.region).name}: ${RISK_NAMES[regionRisk(p.region)].toLowerCase()}${S.bounty[p.f] ? ` · <em class="bad">wanted here, ${fmt(S.bounty[p.f])} d</em>` : ''}</p>${AUDIO.musicOn && AUDIO.ctx ? `<p class="tune">Music: ${esc(themeName(p.f))}</p>` : ''}</div>
     <div class="purse"><small>Purse</small><b>${fmt(S.gold)}</b><small>ducats</small></div>`;
+  { const hc = $('#portHead canvas.harbour'); if (hc) requestAnimationFrame(() => paintHarbour(hc, p)); }
   const tabs = portTabsFor(p);
   if (!tabs.includes(portTab)) portTab = tabs[0];
-  $('#portTabs').innerHTML = tabs.map(t => `<button data-tab="${t}" aria-selected="${t === portTab}">${TAB_NAMES[t]}</button>`).join('');
+  $('#portTabs').innerHTML = tabs.map(t => `<button data-tab="${t}" aria-selected="${t === portTab}">${tabIcon(t)}<span>${TAB_NAMES[t]}</span></button>`).join('');
   const el = $('#portBody');
   if (portTab === 'fleet') el.innerHTML = fleetHTML(p);
   else if (portTab === 'holdings') el.innerHTML = holdingsHTML(p);
@@ -3493,26 +4276,11 @@ function renderPort() {
 }
 function marketHTML(p) {
   const def = shipDef();
-  let rows = '';
-  for (const g of GOOD_KEYS) {
-    const b = buyPrice(p, g), s = sellPrice(p, g), have = S.cargo[g] || 0, basis = S.basis[g];
-    const tag = p.cheap.includes(g) ? '<span class="tag good">local</span>' : p.dear.includes(g) ? '<span class="tag hot">in demand</span>' : '';
-    const pl = have && basis ? (s - basis) : null;
-    rows += `<div class="mrow">
-      <div class="mname"><b>${GOODS[g].name}</b> ${tag}<small>per ${GOODS[g].unit} · stock ${Math.floor(market(p)[g])}</small></div>
-      <div class="mnum"><small>Buy</small><b>${b}</b></div>
-      <div class="mnum"><small>Sell</small><b>${s}</b>${pl != null ? `<small class="${pl >= 0 ? 'up' : 'down'}">${pl >= 0 ? '+' : ''}${Math.round(pl)}</small>` : ''}${hasLt('factor') ? bestKnown(g, p) : ''}</div>
-      <div class="mnum"><small>Hold</small><b>${have}</b></div>
-      <div class="macts">
-        <button class="btn sm" data-buy="${g}" data-n="1">Buy 1</button><button class="btn sm" data-buy="${g}" data-n="10">10</button>
-        <button class="btn sm" data-sell="${g}" data-n="1" ${have ? '' : 'disabled'}>Sell 1</button><button class="btn sm" data-sell="${g}" data-n="999" ${have ? '' : 'disabled'}>All</button>
-      </div></div>`;
-  }
   const days = S.crew ? S.provisions / (S.crew / 10) : 0, provPrice = Math.max(1, Math.round(3 * (p.cheap.includes('grain') ? 0.7 : p.dear.includes('grain') ? 1.6 : 1) * (hasLt('purser') ? 0.7 : 1)));
   const rk = regionRisk(p.region);
   const cons = S.contracts.filter(c => c.type === 'cargo');
-  return `<div class="msum"><span>Hold <b>${cargoUsed()}/${def.hold}</b></span>${cons.length ? `<span>Consigned cargo <b>${cons.reduce((a, c) => a + c.qty, 0)}</b></span>` : ''}<span class="mute">Prices in ducats. The green figure under Sell is your margin per unit.</span>${rk ? `<span class="chip r${rk}"><i class="risk r${rk}"></i>${RISK_NAMES[rk]} waters: prices +${rk * 12}%</span>` : ''}</div>
-    <div class="mtable">${rows}</div>
+  return `<div class="msum"><span>Hold <b>${cargoUsed()}/${holdTotal()}</b></span>${cons.length ? `<span>Consigned cargo <b>${cons.reduce((a, c) => a + c.qty, 0)}</b></span>` : ''}<span class="mute">Prices in ducats. The green figure under Sell is your margin per unit.</span>${rk ? `<span class="chip r${rk}"><i class="risk r${rk}"></i>${RISK_NAMES[rk]} waters: prices +${rk * 12}%</span>` : ''}</div>
+    ${marketGoodsHTML(p)}
     <div class="provrow"><div><b>Provisions</b><small>Biscuit, salt pork and water. One ration feeds ten men for a day. ${provPrice} ducats each.</small></div>
       <div class="mnum"><small>Aboard</small><b>${Math.floor(days)} days</b></div>
       <div class="macts"><button class="btn sm" data-prov="10" data-price="${provPrice}">+10</button><button class="btn sm" data-prov="fill" data-price="${provPrice}">Fill to 30 days</button></div></div>`;
@@ -3562,13 +4330,13 @@ function yardHTML(p) {
     <button class="btn primary" data-act="repair" ${dmg && S.gold >= Math.min(cost, 1) ? '' : 'disabled'}>${dmg ? `Repair ${dmg} hull · ${fmt(cost)} d` : 'Hull is sound'}</button></div>
     ${statGrid(def)}</div>`;
   if (!p.yard) return html + `<p class="mute">${esc(p.name)} has no shipwright worth the name. Try a great arsenal such as Venice, Barcelona or Constantinople.</p>`;
-  const avail = Object.entries(SHIPS).filter(([k, sd]) => !sd.hidden && !sd.elite && k !== S.ship.type && (p.yard === 2 || ['feluca', 'fusta', 'tartane', 'galiot'].includes(k)));
+  const avail = Object.entries(SHIPS).filter(([k, sd]) => !sd.hidden && !sd.elite && k !== S.ship.type && (!sd.theatres || sd.theatres.includes(p.th || 'med')) && (p.yard === 2 || k === 'dhow' || ['feluca', 'fusta', 'tartane', 'galiot'].includes(k)));
   const trade = Math.round(def.price * 0.5 * (S.ship.hull / def.hull));
   html += `<h4 class="sect">Hulls on the slipway <small>Your ${def.name.toLowerCase()} is worth ${fmt(trade)} ducats in trade</small></h4><div class="ships">`;
   for (const [k, sd] of avail) {
     const net = sd.price - trade, fits = cargoUsed() <= sd.hold;
     html += `<div class="card ship"><div class="cardhead"><div><h3>${sd.name}</h3><small>${sd.note}</small></div></div>${statGrid(sd)}
-      <div class="row-btns"><button class="btn ${net <= S.gold && fits ? 'primary' : ''}" data-ship="${k}" ${net <= S.gold && fits ? '' : 'disabled'}>${!fits ? 'Hold too small for your cargo' : net > 0 ? `Make her your flagship · ${fmt(net)} d` : `Trade down, receive ${fmt(-net)} d`}</button>
+      <div class="row-btns"><button class="btn ${net <= S.gold && fits ? 'primary' : ''}" data-ship="${k}" ${net <= S.gold && fits ? '' : 'disabled'}>${!fits ? 'Hold too small for your cargo' : net > 0 ? `Make her your flagship · ${fmt(net)} d` : `Trade down, receive ${fmt(Math.abs(net))} d`}</button>
       ${fleetBuyBtn(k, sd)}</div></div>`;
   }
   html += '</div>';
@@ -3617,7 +4385,7 @@ function specialistHTML(p) {
 }
 function newsHTML(p) {
   const items = newsFor(p);
-  const risks = REGIONS.map(r => [r, regionRisk(r.id)]).filter(([, k]) => k > 0).sort((a, b) => b[1] - a[1]);
+  const risks = REGIONS.filter(r => (r.th || 'med') === curTh()).map(r => [r, regionRisk(r.id)]).filter(([, k]) => k > 0).sort((a, b) => b[1] - a[1]);
   return `<div class="card board"><h3>${VOICE[p.f] || 'News from the sea'}</h3>
     <div class="riskchips">${risks.map(([r, k]) => `<span class="chip r${k}"><i class="risk r${k}"></i>${r.name}: ${RISK_NAMES[k].toLowerCase()}</span>`).join('') || '<span class="chip">All the seas are calm</span>'}</div>
     ${siegeActive() ? `<div class="news-item"><time>${dateStr()}</time><b>Malta besieged</b><span>The Grand Master holds Birgu against the Sultan’s armada. Grain run into the harbour is worth its weight in silver.</span></div>` : ''}
@@ -3626,7 +4394,7 @@ function newsHTML(p) {
 }
 function makeRumour(p) {
   const g = pick(GOOD_KEYS);
-  const prices = PORTS.filter(q => q !== p && !q.site).map(q => [q, buyPrice(q, g), sellPrice(q, g)]);
+  const prices = TPORTS().filter(q => q !== p && !q.site).map(q => [q, buyPrice(q, g), sellPrice(q, g)]);
   const cheap = prices.sort((a, b) => a[1] - b[1])[0], dear = prices.sort((a, b) => b[2] - a[2])[0];
   const who = pick(['A Ragusan factor', 'A one-eyed boatswain', 'A Jewish broker from Salonica', 'A Florentine agent', 'An old galley slave, now free', 'A Marseillais shipmaster']);
   const which = Math.random() < 0.5 ? `${GOODS[g].name.toLowerCase()} can be had for ${cheap[1]} ducats a ${GOODS[g].unit} in ${cheap[0].name}` : `${dear[0].name} pays ${dear[2]} ducats a ${GOODS[g].unit} for ${GOODS[g].name.toLowerCase()}`;
@@ -3634,6 +4402,108 @@ function makeRumour(p) {
   const newly = !S.discovered[port.id]; S.discovered[port.id] = true;
   return `${who} swears ${which}.${newly ? ` You mark ${port.name} on your chart.` : ''}`;
 }
+// ---------- long voyages between the charts ----------
+// Ocean crossings are not sailed by hand: the days pass in one go and you make landfall on the other chart.
+const VOYAGES = [
+  { id: 'carrera', name: 'Carrera de Indias', from: ['seville', 'cadiz', 'laspalmas'], to: 'carib', dests: ['sdomingo', 'cartagena_i', 'veracruz', 'havana'], days: [40, 54],
+    blurb: 'Across the Ocean Sea with the trade wind behind you, by the Canaries and Dominica to the Indies of Castile.' },
+  { id: 'tornaviaje', name: 'Return to Castile', from: ['havana', 'sdomingo'], to: 'med', dests: ['cadiz', 'seville', 'lisbon'], days: [58, 72],
+    blurb: 'Up the Bahama channel with the Gulf Stream, north to the westerlies and home by the Azores.' },
+  { id: 'cape', name: 'Carreira da Índia', from: ['lisbon'], to: 'indian', dests: ['goa', 'cochin', 'mombasa'], days: [150, 180], scurvy: true, season: [2, 3],
+    blurb: 'South round the Cape of Good Hope to the Estado da Índia. Six months at sea; leave in March or April to catch the monsoon.' },
+  { id: 'capeback', name: 'Home by the Cape', from: ['goa', 'cochin'], to: 'med', dests: ['lisbon'], days: [160, 190], scurvy: true, season: [11, 0],
+    blurb: 'The pepper carracks leave Malabar in December or January and reach Lisbon by summer, if the Cape allows.' },
+  { id: 'caravan', name: 'Caravan to Suez', from: ['cairo'], to: 'indian', dests: ['suez'], days: [8, 11], overland: true,
+    blurb: 'Your ship stays in Cairo. Camels carry your cargo across the desert to Suez, where a dhow waits for you on the Red Sea.' },
+  { id: 'caravanback', name: 'Caravan to Cairo', from: ['suez'], to: 'med', dests: ['cairo'], days: [8, 11], overland: true,
+    blurb: 'Your ship is sold at Suez and you take the desert road back to the Nile, and to any ship you left there.' },
+];
+const CAMEL_LOAD = 60;
+const voyagesFrom = p => VOYAGES.filter(v => v.from.includes(p.id));
+const oceanDays = (v, dest) => {
+  let [a, b] = v.days; if (v.id === 'carrera' && dest !== 'sdomingo') { a += 8; b += 8; }
+  return [a, b];
+};
+const offSeason = v => v.season && !v.season.includes(curDate().getUTCMonth());
+function voyageCheck(v, dest) {
+  const def = shipDef(), [a, b] = oceanDays(v, dest), late = offSeason(v) ? 40 : 0;
+  const need = Math.ceil(S.crew / 10 * (b + late));
+  const fee = v.overland ? 60 + cargoUsed() * 3 : 0;
+  if (!v.overland && def.oars >= 0.5) return { why: `A ${def.name.toLowerCase()} cannot cross an ocean. You need a sailing ship.`, need, fee, late };
+  if (!v.overland && S.provisions < need) return { why: `You need ${need} days of provisions for ${b + late} days at sea (you have ${Math.floor(S.provisions)}).`, need, fee, late };
+  if (v.overland && cargoUsed() > CAMEL_LOAD) return { why: `The camels carry ${CAMEL_LOAD} loads at most. You carry ${cargoUsed()}: sell or bank the rest.`, need, fee, late };
+  if (v.overland && S.gold < fee) return { why: `The caravan master wants ${fee} ducats.`, need, fee, late };
+  return { why: null, need, fee, late };
+}
+function voyagesHTML(p) {
+  const vs = voyagesFrom(p);
+  if (!vs.length) return '';
+  let html = `<h4 class="sect">Long voyages <small>To another chart</small></h4>`;
+  for (const v of vs) {
+    const chk = voyageCheck(v, v.dests[0]);
+    html += `<div class="card voyage"><div class="cardhead"><div><h3>${esc(v.name)}</h3><small>${esc(v.blurb)}${chk.late ? ' You have missed the season: count on about 40 more days.' : ''}</small>
+      <small class="mute">${v.overland ? `Caravan fee ${fmt(chk.fee)} d.` : `Provisions needed ${chk.need}, you have ${Math.floor(S.provisions)}.`}${chk.why ? ' ' + esc(chk.why) : ''}</small></div></div>
+      <div class="voyrow">${v.dests.map(d => { const q = portById(d), [a, b] = oceanDays(v, d); return `<button class="btn ${chk.why ? '' : 'primary'}" data-act="voy:${v.id}:${d}" ${chk.why ? 'disabled' : ''}>${esc(q.name)} · ${a + chk.late}–${b + chk.late} days</button>`; }).join('')}</div></div>`;
+  }
+  return html;
+}
+var voyageMute = null;
+function setTheatre(th) {
+  S.theatre = th; S.npcs = []; S.route = null; S.routeDest = null; S.target = null;
+  pathCache.clear(); ensureRelief(th);
+}
+function startVoyage(vid, dest) {
+  const v = VOYAGES.find(x => x.id === vid), q = portById(dest), from = portById(S.docked);
+  if (!v || !q || !from || !v.from.includes(from.id)) return;
+  const chk = voyageCheck(v, dest); if (chk.why) { toast('Not yet', chk.why, 'bad'); return; }
+  const [a, b] = oceanDays(v, dest), days = randi(a, b) + chk.late;
+  const log = [];
+  if (v.overland) S.gold -= chk.fee;
+  // the ship and men change at the desert road
+  if (v.id === 'caravan') {
+    S.stash = { ship: S.ship, crew: S.crew };
+    const sd = SHIPS.dhow; S.ship = { type: 'dhow', hull: sd.hull }; S.crew = Math.min(S.crew, sd.crewMax);
+    for (const f of escorts()) f.mode = 'laid';
+    log.push(`Your ${SHIPS[S.stash.ship.type].name.toLowerCase()} is laid up in Cairo with ${S.stash.crew - S.crew || 'none'} of the crew. At Suez a dhow is yours.`);
+  } else if (v.id === 'caravanback') {
+    const cur = shipDef(), val = Math.round(cur.price * 0.5 * S.ship.hull / cur.hull);
+    S.gold += val;
+    if (S.stash) { S.ship = S.stash.ship; S.crew = Math.max(S.crew, S.stash.crew); log.push(`The ${cur.name.toLowerCase()} sells for ${fmt(val)} ducats. Your old ship waits for you at Cairo.`); S.stash = null; }
+    else { S.ship = { type: 'feluca', hull: SHIPS.feluca.hull }; S.crew = Math.min(S.crew, SHIPS.feluca.crewMax); log.push(`The ${cur.name.toLowerCase()} sells for ${fmt(val)} ducats. At Cairo you buy a felucca for the Nile.`); }
+  }
+  // let the days pass
+  S.docked = from.id; voyageMute = [];
+  const crew0 = S.crew, gold0 = S.gold;
+  for (let d = 0; d < days; d++) { S.t += 24; while (dayIndex() > S.lastDay) { S.lastDay++; dailyTick(); } }
+  const tales = voyageMute; voyageMute = null;
+  if (!v.overland) {
+    const def = shipDef(), storms = randi(0, v.scurvy ? 3 : 2);
+    let dmg = 0; for (let k = 0; k < storms; k++) dmg += Math.round(rand(4, 14) * def.hull / 80 * (1 - 0.06 * S.skills.nav) * (hasLt('pilot') ? 0.5 : 1));
+    if (dmg) { S.ship.hull = Math.max(Math.ceil(def.hull * 0.15), S.ship.hull - dmg); log.push(`${storms} ${storms > 1 ? 'gales' : 'gale'} on the way: hull damage ${dmg}.`); }
+    if (v.scurvy) {
+      const lost = Math.max(1, Math.round(S.crew * rand(0.08, 0.18) * (hasLt('surgeon') ? 0.5 : 1)));
+      S.crew = Math.max(1, S.crew - lost);
+      log.push(`Scurvy takes ${lost} men.${hasLt('surgeon') ? ' Your surgeon saved many more.' : ' A surgeon would have saved half.'}`);
+    }
+    S.morale = clamp(S.morale - (v.scurvy ? 20 : 10), 5, 100);
+  }
+  const spent = gold0 - S.gold;
+  if (spent > 0) log.push(`Wages and dues on the way: ${fmt(spent)} ducats.`);
+  const seen = new Set();
+  for (const t of tales) { const k = t.split(':')[0]; if (!(HISTORY.some(h => h.title === k) || /^(Stipend|Promoted|Fleet upkeep)/.test(k)) || seen.has(k)) continue; seen.add(k); log.push(t); }
+  // landfall on the other chart
+  S.docked = null;
+  setTheatre(v.to);
+  S.x = q.wx; S.y = q.wy; S.speed = 0; S.sail = 0;
+  discoverNear(q.wx, q.wy, 320, true); S.discovered[q.id] = true;
+  for (let i = 0; i < 20; i++) spawnNpc(null, true);
+  S.voyLog = { title: `${v.overland ? 'Arrived at' : 'Landfall at'} ${q.name}`, days, lines: log };
+  toast(S.voyLog.title, [`${days} days ${v.overland ? 'on the road' : 'at sea'}.`, ...log].join('\n'), 'gold');
+  dock(q);
+  if (!S.docked) { S.x = q.wx; S.y = q.wy; }
+  save(); updateHUD();
+}
+
 function harbourHTML(p) {
   const offers = offersFor(p);
   let html = '';
@@ -3656,8 +4526,25 @@ function harbourHTML(p) {
     html += `<h4 class="sect">Your bounty</h4><div class="card wanted"><div class="cardhead"><div><h3>${fmt(myB)} ducats on your head</h3><small>The ${fn.adj} magistrates will strike your name for a fine. Bounties also fade slowly with time.</small></div>
       <button class="btn primary" data-act="paybounty" ${S.gold >= fine ? '' : 'disabled'}>Pay ${fmt(fine)} d</button></div></div>`;
   }
+  // Portuguese cartaz in the Arabian Sea
+  if (f === 'portugal' && p.th === 'indian') {
+    const fee = 120 + S.level * 15, ok = !isHostile('portugal');
+    html += `<h4 class="sect">Cartaz <small>Portuguese pass for the Indian Ocean</small></h4><div class="card"><div class="cardhead"><div>`;
+    html += hasCartaz() ? (S.cartazUntil && dayIndex() <= S.cartazUntil ? `<h3>Your cartaz is valid</h3><small>Good until ${dateStrOf(S.cartazUntil)}. Portuguese patrols let you pass.</small>` : `<h3>You sail under the Portuguese crown</h3><small>No cartaz needed.</small>`)
+      : `<h3>Buy a cartaz</h3><small>The Estado da Índia claims these seas. Without a cartaz, Portuguese patrols seize any ship they meet. Valid one year.</small>`;
+    html += `</div>${!hasCartaz() || (S.cartazUntil && dayIndex() <= S.cartazUntil) ? `<button class="btn primary" data-act="cartaz" ${ok && S.gold >= fee ? '' : 'disabled'}>${hasCartaz() ? 'Extend' : 'Buy cartaz'} · ${fee} d</button>` : ''}</div></div>`;
+  }
+  // licence of the Casa de Contratación, sold in Seville
+  if (p.id === 'seville') {
+    const fee = 400 + S.level * 40, lawful = S.allegiance === 'spain' || S.origin === 'naples';
+    html += `<h4 class="sect">Casa de Contratación <small>Licence to trade in the Indies</small></h4><div class="card"><div class="cardhead"><div>`;
+    html += lawful ? `<h3>You may trade in the Indies</h3><small>As a subject or servant of the King of Spain, the Indies are open to you.</small>`
+      : S.licenceUntil && dayIndex() <= S.licenceUntil ? `<h3>Your licence is valid</h3><small>Good until ${dateStrOf(S.licenceUntil)}.</small>`
+      : `<h3>Buy a licence</h3><small>Only Spanish subjects may trade in the Indies. Foreigners who do are smugglers, and every sale raises a Spanish bounty. A licence makes your trade lawful for one year.</small>`;
+    html += `</div>${lawful ? '' : `<button class="btn primary" data-act="licence" ${S.gold >= fee && !isHostile('spain') ? '' : 'disabled'}>${S.licenceUntil && dayIndex() <= S.licenceUntil ? 'Extend' : 'Buy licence'} · ${fee} d</button>`}</div></div>`;
+  }
   // imperial firman for the Black Sea
-  if (f === 'ottoman') {
+  if (f === 'ottoman' && (p.th || 'med') === 'med') {
     const why = passReason();
     html += `<h4 class="sect">Imperial firman <small>Passage of the Bosporus into the Black Sea</small></h4><div class="card">`;
     if (why === 'Imperial firman') html += `<div class="cardhead"><div><h3>Your firman is valid</h3><small>Stamped with the Sultan\u2019s tughra. Good until ${dueStr({ due: S.firmanUntil })} ${new Date(START_DATE + S.firmanUntil * 864e5).getUTCFullYear()}.</small></div>
@@ -3670,6 +4557,7 @@ function harbourHTML(p) {
     }
     html += `</div>`;
   }
+  html += voyagesHTML(p);
   // letter of marque
   html += `<h4 class="sect">Letter of marque</h4><div class="card">`;
   if (fn.outlaw || f === 'ragusa') html += `<p class="mute">${f === 'ragusa' ? 'Ragusa issues no letters of marque. Its only weapon is its neutrality.' : 'No one here signs letters.'}</p>`;
@@ -3761,21 +4649,23 @@ function renderCaptain() {
     <h4 class="sect">Standing with the powers ${totalBounty() ? `<small class="bad">Wanted: ${fmt(totalBounty())} ducats in all</small>` : ''}</h4><div class="reps">${reps}</div>
     ${S.contracts.length ? `<h4 class="sect">Contracts</h4>${S.contracts.map(c => `<div class="card slim"><b>${esc(c.title)}</b><small>${c.type === 'bounty' ? `${c.got}/${c.count} taken · ` : ''}due ${dueStr(c)}</small></div>`).join('')}` : ''}
     <h4 class="sect">Language</h4><div class="row-btns">${langSwitch()}</div>
+    <h4 class="sect">Sound</h4><div class="row-btns"><button class="btn" data-act="sfxtoggle" aria-pressed="${AUDIO.sfxOn}">${AUDIO.sfxOn ? 'Sound effects: on' : 'Sound effects: off'}</button><button class="btn" data-act="musictoggle" aria-pressed="${AUDIO.musicOn}">${AUDIO.musicOn ? 'Port music: on' : 'Port music: off'}</button></div>
     <h4 class="sect">Controls</h4><p class="mute">Click or tap the sea to steer there. A/D or arrow keys to turn, W/S to set sail, E to enter port, C for the chart, F for fast time, V to switch the 3D view. Scroll or use + and − to zoom.</p>
     <div class="row-btns"><button class="btn" data-act="tiptoggle">${tipsOn ? 'Turn off pilot\u2019s advice' : 'Turn on pilot\u2019s advice'}</button></div>
     <div class="row-btns"><button class="btn ghost" data-act="newgame">Abandon this voyage and start again</button></div>`;
 }
 // ----- chart / course -----
 function renderCourse() {
-  const list = PORTS.map((p, i) => ({ p, i, d: Math.hypot(p.x - S.x, p.y - S.y) })).filter(o => S.discovered[o.p.id]).sort((a, b) => a.d - b.d);
+  const list = PORTS.map((p, i) => ({ p, i, d: Math.hypot(p.x - S.x, p.y - S.y) })).filter(o => S.discovered[o.p.id] && inTh(o.p)).sort((a, b) => a.d - b.d);
   $('#courseBody').innerHTML = `<p class="mute">Your pilot plots a course along the coasts and through the straits. Distances in nautical miles; days at your current speed under full sail.</p><div class="courses">` +
     list.map(o => {
       const h = isHostile(o.p.f), kn = Math.max(3, shipDef().speed * 0.75), days = (o.d * 1.25 / kn / 24);
       const rk = regionRisk(o.p.region);
       return `<button class="course" data-course="${o.i}"><span class="flag" style="${flagCss(o.p.f)}"></span><span><b>${o.p.name}</b><small><i class="risk r${rk}"></i>${RISK_NAMES[rk]} · ${FACTIONS[o.p.f].name}${h ? ' · hostile' : ''}${S.bounty[o.p.f] >= 600 ? ' · wanted' : ''}${o.p.bs && !bosporusPass() ? ' · firman needed' : ''}</small></span><span class="num">~${fmt(o.d * 1.25)} nm<small>${days < 1 ? '< 1 day' : days.toFixed(1) + ' days'}</small></span></button>`;
-    }).join('') + `</div><p class="mute">${PORTS.length - list.length} ports remain uncharted. Sail near a coast or listen in taverns to find them.</p>`;
+    }).join('') + `</div><p class="mute">${TPORTS().length - list.length} ports remain uncharted. Sail near a coast or listen in taverns to find them.</p>`;
 }
 function setCourse(i) {
+  if (PORTS[i].river && tooDeep(S.ship.type) && !inRiverChannel(S.x, S.y)) { toast('Too deep for the river', `${PORTS[i].name} lies upriver. Your ${shipDef().name.toLowerCase()} draws too much water; take a shallower ship.`, 'bad'); return; }
   const r = routeTo(S.x, S.y, i);
   if (!r) { toast('No course', 'The pilot cannot find a way from here.', 'bad'); return; }
   S.route = r.pts; S.routeDest = i; S.target = null; if (!S.sail) S.sail = 2;
@@ -3798,7 +4688,9 @@ function renderStart() {
 document.addEventListener('click', e => {
   const t = e.target.closest('button,[data-act]'); if (!t) return;
   const d = t.dataset;
+  audioInit();
   if (d.lang) { setLang(d.lang); return; }
+  if (d.mfilter) { marketFilter = d.mfilter; renderPort(); return; }
   if (d.close != null) { closeModal(); return; }
   if (d.tab) { portTab = d.tab; renderPort(); return; }
   if (d.sail != null) { S.sail = +d.sail; if (S.docked) undock(); updateHUD(); return; }
@@ -3871,6 +4763,9 @@ document.addEventListener('click', e => {
   } else if (act === 'round') { const c = Math.max(5, S.crew); S.gold -= c; S.morale = clamp(S.morale + 15, 0, 100); toast('A round for the crew', 'Songs carry across the harbour.'); renderPort(); }
   else if (act === 'rumour') { const p = portById(S.docked); S.flags['rumour_' + p.id + '_' + dayIndex()] = makeRumour(p); renderPort(); }
   else if (act === 'runforts') runForts();
+  else if (act.startsWith('voy:')) { const [, vid, dest] = act.split(':'); closeModal(); startVoyage(vid, dest); }
+  else if (act === 'cartaz') { const fee = 120 + S.level * 15; if (S.gold >= fee) { S.gold -= fee; S.cartazUntil = Math.max(S.cartazUntil || 0, dayIndex()) + 365; toast('Cartaz issued', 'Stamped with the arms of the Estado da Índia. Portuguese patrols will let you pass for a year.', 'gold'); } renderPort(); }
+  else if (act === 'licence') { const fee = 400 + S.level * 40; if (S.gold >= fee) { S.gold -= fee; S.licenceUntil = Math.max(S.licenceUntil || 0, dayIndex()) + 365; toast('Licence granted', 'The Casa de Contratación enters your name. You may trade in the Indies for a year.', 'gold'); } renderPort(); }
   else if (act === 'firman') {
     const fee = firmanFee(); if (S.gold < fee) return;
     S.gold -= fee; S.firmanUntil = Math.max(S.firmanUntil || 0, dayIndex()) + 180;
@@ -3890,6 +4785,9 @@ document.addEventListener('click', e => {
   else if (act === 'captain') { renderCaptain(); openModal('captain'); }
   else if (act === 'chart') { renderCourse(); openModal('course'); }
   else if (act === 'tilt') toggle3D();
+  else if (act === 'sound') { const on = !(AUDIO.sfxOn || AUDIO.musicOn); setSfx(on); setMusic(on); updateHUD(); }
+  else if (act === 'sfxtoggle') { setSfx(!AUDIO.sfxOn); renderCaptain(); }
+  else if (act === 'musictoggle') { setMusic(!AUDIO.musicOn); renderCaptain(); }
   else if (act === 'tipnext') showTip();
   else if (act === 'tiphide') { $('#advice').hidden = true; tipShown = 0; }
   else if (act === 'tipoff') { setTips(false); toast('Tips off', 'Turn them back on from the captain\u2019s log.'); }
@@ -3930,6 +4828,7 @@ cv.addEventListener('pointerdown', e => {
 cv.addEventListener('wheel', e => { e.preventDefault(); view.z = clamp(view.z * (e.deltaY < 0 ? 1.12 : 1 / 1.12), minZoom(), 8); }, { passive: false });
 const KEYMAP = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right' };
 window.addEventListener('keydown', e => {
+  if (S) audioInit();
   if (e.target.tagName === 'INPUT') return;
   if (KEYMAP[e.key]) { keys[KEYMAP[e.key]] = true; e.preventDefault(); return; }
   if (!S) return;
@@ -3941,6 +4840,7 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'c' || e.key === 'C') { renderCourse(); openModal('course'); }
   else if (e.key === 'f' || e.key === 'F') timeScale = timeScale > 1 ? 1 : 3;
   else if (e.key === 'v' || e.key === 'V') toggle3D();
+  else if (e.key === 's' && e.altKey) { const on = !(AUDIO.sfxOn || AUDIO.musicOn); setSfx(on); setMusic(on); }
   else if (e.key === '+' || e.key === '=') view.z = clamp(view.z * 1.35, minZoom(), 8);
   else if (e.key === '-') view.z = clamp(view.z / 1.35, minZoom(), 8);
   updateHUD();
@@ -3969,13 +4869,13 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 function drawIdle(now) {
-  const { W, H, dpr } = view; const z = Math.max(W / WORLD_W, H / WORLD_H) * 1.15;
-  const t = now / 40000, cx = WORLD_W * (0.5 + Math.sin(t) * 0.08), cy = WORLD_H * 0.55;
+  const MT = THEATRES.med, { W, H, dpr } = view; const z = Math.max(W / MT.w, H / MT.h) * 1.15;
+  const t = now / 40000, cx = MT.w * (0.5 + Math.sin(t) * 0.08), cy = MT.h * 0.55;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = COL.sea; ctx.fillRect(0, 0, W, H);
   ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * (W / 2 - cx * z), dpr * (H / 2 - cy * z));
   drawSea();
   ctx.globalAlpha = 0.45; ctx.lineWidth = 0.9 / z; ctx.strokeStyle = COL.gilt; ctx.stroke(rhumbPaths[0]); ctx.strokeStyle = COL.rhumbG; ctx.stroke(rhumbPaths[1]); ctx.globalAlpha = 1;
-  drawLand(); ctx.strokeStyle = COL.ink; ctx.lineWidth = 1.2 / z; ctx.stroke(landCoast);
+  drawLand(); drawRivers(); ctx.strokeStyle = COL.ink; ctx.lineWidth = 1.2 / z; ctx.stroke(landCoast);
 }
 
 // ================= BOOT =================
@@ -3997,6 +4897,3 @@ const _hot = window.claude?.hot;
 if (_hot?.ready) _hot.ready(boot); else boot(_hot?.data ?? {});
 
 </script>
-
-</body>
-</html>
