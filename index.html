@@ -381,13 +381,14 @@ button:focus-visible, input:focus-visible, label.origin:focus-within { outline: 
 // Each sea is its own chart ("theatre"). They sit side by side in one coordinate space, separated by
 // uncharted land, so ships can never sail from one to another: you travel between them by long voyage.
 const THEATRES = {
-  med:    { name: 'Mediterranean', lon0: -28, lat0: 47, lon1: 42, lat1: 4, ref: 38 },
+  med:    { name: 'Mediterranean', lon0: -28, lat0: 52, lon1: 42, lat1: 4, ref: 38 },
   carib:  { name: 'The Indies', lon0: -98, lat0: 31, lon1: -58, lat1: 7, ref: 19 },
   indian: { name: 'The Arabian Sea', lon0: 31, lat0: 32, lon1: 80, lat1: -10, ref: 12 },
 };
 const THEATRE_KEYS = ['med', 'carib', 'indian'];
 (() => { let ox = 0; for (const k of THEATRE_KEYS) { const T = THEATRES[k]; T.kx = 60 * Math.cos(T.ref * Math.PI / 180); T.w = (T.lon1 - T.lon0) * T.kx; T.h = (T.lat0 - T.lat1) * 60; T.ox = ox; T.oy = 0; ox += T.w + 600; } })();
-const LON0 = -28, LAT0 = 47, LON1 = 42, LAT1 = 4;
+const LON0 = -28, LAT0 = 52, LON1 = 42, LAT1 = 4;
+const OLD_LAT0 = 47; // saves made before the Channel was charted used this origin
 const OLD_LON0 = -7; // saves made before the Atlantic was charted used this origin
 const KX = THEATRES.med.kx, KY = 60;
 const proj = (lon, lat, th = 'med') => { const T = THEATRES[th]; return [T.ox + (lon - T.lon0) * T.kx, T.oy + (T.lat0 - lat) * KY]; };
@@ -395,6 +396,10 @@ const WORLD_W = THEATRES.indian.ox + THEATRES.indian.w, WORLD_H = Math.max(...TH
 function theatreAtX(x) { for (const k of THEATRE_KEYS) { const T = THEATRES[k]; if (x >= T.ox - 0.5 && x <= T.ox + T.w + 0.5) return k; } return null; }
 
 const MAIN_COAST = [
+  // the Low Countries, Picardy, Normandy and Brittany
+  [4.1,51.95],[3.6,51.5],[3.2,51.35],[2.55,51.1],[1.85,50.95],[1.58,50.72],[1.6,50.2],[1.4,50.08],[1.08,49.93],[0.6,49.86],[0.18,49.7],[0.1,49.48],[-0.2,49.3],[-0.9,49.38],
+  [-1.25,49.6],[-1.6,49.65],[-1.95,49.72],[-1.85,49.4],[-1.6,49.2],[-1.55,48.85],[-1.4,48.65],[-1.85,48.68],[-2.03,48.65],[-2.32,48.68],[-2.75,48.52],[-3.05,48.8],[-3.6,48.75],
+  [-4.0,48.72],[-4.6,48.6],[-4.78,48.35],[-4.45,48.32],[-4.6,48.2],[-4.35,48.1],[-4.73,48.04],[-4.37,47.8],[-3.9,47.85],[-3.4,47.7],[-3.1,47.48],[-2.8,47.5],[-2.5,47.3],[-2.2,47.27],
   [-2.2,47],[-2.0,46.8],[-1.8,46.5],[-1.4,46.25],[-1.15,46.1],[-1.1,45.8],[-1.2,45.6],[-1.25,45.0],[-1.25,44.4],[-1.45,43.6],[-1.8,43.38],[-2.5,43.35],[-3.0,43.38],[-3.8,43.48],[-4.7,43.42],[-5.8,43.6],[-6.5,43.57],[-7.5,43.73],[-8.2,43.5],[-8.4,43.38],[-9.0,43.2],[-9.3,42.9],[-8.9,42.4],[-8.85,41.9],[-8.7,41.4],[-8.65,41.15],[-8.8,40.6],[-9.0,40.0],[-9.35,39.4],[-9.48,38.75],[-9.2,38.66],[-9.1,38.45],[-8.85,38.45],[-8.8,38.0],[-8.85,37.5],[-8.99,37.02],[-8.6,37.1],[-7.9,37.0],[-7.4,37.18],[-6.9,37.2],[-6.4,36.8],[-6.3,36.5],[-6.0,36.2],[-5.6,36.05],[-5.35,36.18],[-4.9,36.5],[-4.4,36.72],[-3.5,36.72],
   [-2.6,36.75],[-2.1,36.73],[-1.65,37.3],[-0.85,37.6],[-0.7,38.0],[-0.4,38.35],[0.2,38.75],[-0.15,39.2],[-0.35,39.5],[0.0,40.0],
   [0.6,40.6],[0.9,40.85],[1.25,41.1],[2.2,41.4],[3.2,41.9],[3.15,42.45],[3.05,42.9],[3.2,43.25],[3.9,43.55],[4.6,43.4],
@@ -419,7 +424,7 @@ const MAIN_COAST = [
   [10.85,35.65],[10.5,36.1],[10.55,36.4],[11.05,36.85],[11.05,37.08],[10.6,36.85],[10.2,36.8],[10.25,37.2],[9.85,37.3],[9.2,37.2],
   [8.6,36.95],[7.75,36.95],[6.6,37.05],[6.25,36.9],[5.4,36.65],[4.6,36.9],[3.6,36.8],[3.05,36.75],[2.3,36.6],[1.3,36.5],
   [0.2,36.0],[-0.6,35.75],[-1.2,35.3],[-2.0,35.1],[-2.9,35.25],[-3.9,35.2],[-4.6,35.2],[-5.3,35.88],[-5.9,35.8],[-6.1,35.5],
-  [-6.25,35.1],[-6.6,34.4],[-6.85,34.03],[-7.6,33.6],[-8.5,33.25],[-9.0,32.75],[-9.25,32.3],[-9.6,31.9],[-9.8,31.5],[-9.85,30.9],[-9.65,30.43],[-9.8,29.9],[-10.2,29.4],[-11.0,28.75],[-12.2,28.1],[-13.2,27.65],[-14.0,26.9],[-14.5,26.1],[-15.0,25.3],[-15.9,24.0],[-16.3,23.3],[-16.9,22.1],[-17.05,21.0],[-16.5,20.4],[-16.3,19.8],[-16.5,18.6],[-16.1,17.5],[-16.5,16.2],[-17.1,15.0],[-17.45,14.72],[-17.0,14.5],[-16.8,13.8],[-16.7,13.0],[-16.8,12.4],[-16.5,12.0],[-15.6,11.2],[-14.9,10.6],[-14.2,9.8],[-13.3,9.0],[-13.2,8.5],[-12.5,7.6],[-11.5,6.9],[-10.5,6.3],[-9.5,5.6],[-8.3,4.8],[-7.6,4.4],[-6.5,4.6],[-5.5,5.05],[-4.0,5.25],[-3.0,5.1],[-2.2,4.85],[-1.35,5.08],[-0.6,5.4],[0.3,5.7],[1.2,6.1],[2.4,6.3],[3.5,6.4],[4.5,6.0],[5.4,5.3],[6.0,4.3],[6.2,4.0],[42,4],[42,47]
+  [-6.25,35.1],[-6.6,34.4],[-6.85,34.03],[-7.6,33.6],[-8.5,33.25],[-9.0,32.75],[-9.25,32.3],[-9.6,31.9],[-9.8,31.5],[-9.85,30.9],[-9.65,30.43],[-9.8,29.9],[-10.2,29.4],[-11.0,28.75],[-12.2,28.1],[-13.2,27.65],[-14.0,26.9],[-14.5,26.1],[-15.0,25.3],[-15.9,24.0],[-16.3,23.3],[-16.9,22.1],[-17.05,21.0],[-16.5,20.4],[-16.3,19.8],[-16.5,18.6],[-16.1,17.5],[-16.5,16.2],[-17.1,15.0],[-17.45,14.72],[-17.0,14.5],[-16.8,13.8],[-16.7,13.0],[-16.8,12.4],[-16.5,12.0],[-15.6,11.2],[-14.9,10.6],[-14.2,9.8],[-13.3,9.0],[-13.2,8.5],[-12.5,7.6],[-11.5,6.9],[-10.5,6.3],[-9.5,5.6],[-8.3,4.8],[-7.6,4.4],[-6.5,4.6],[-5.5,5.05],[-4.0,5.25],[-3.0,5.1],[-2.2,4.85],[-1.35,5.08],[-0.6,5.4],[0.3,5.7],[1.2,6.1],[2.4,6.3],[3.5,6.4],[4.5,6.0],[5.4,5.3],[6.0,4.3],[6.2,4.0],[42,4],[42,52],[4.3,52]
 ];
 
 const ISLANDS = {
@@ -435,6 +440,11 @@ const ISLANDS = {
   Santiago: [[-23.78,15.15],[-23.6,15.33],[-23.45,15.05],[-23.6,14.9]], Fogo: [[-24.5,14.95],[-24.35,15.05],[-24.3,14.85]], BoaVista: [[-22.95,16.1],[-22.75,16.2],[-22.7,15.98],[-22.9,15.95]],
   Sal: [[-22.98,16.75],[-22.88,16.85],[-22.9,16.6]], SantoAntao: [[-25.35,17.05],[-25.1,17.2],[-24.95,17.0],[-25.2,16.9]],
   Bioko: [[8.45,3.9],[8.95,3.95],[8.8,3.6]],
+  Britain: [[-5.72,50.05],[-5.2,49.96],[-5.05,50.15],[-4.65,50.32],[-4.15,50.33],[-3.64,50.22],[-3.5,50.45],[-3.4,50.62],[-2.9,50.72],[-2.45,50.6],[-1.95,50.68],[-1.4,50.8],[-0.78,50.72],
+    [-0.15,50.82],[0.25,50.74],[0.97,50.92],[1.38,51.15],[1.45,51.38],[0.9,51.45],[0.55,51.52],[1.0,51.75],[1.6,52.0],[1.75,52.7],[-4.2,52.7],[-4.1,52.5],[-4.4,52.2],[-5.0,52.05],[-5.3,51.86],
+    [-5.1,51.68],[-4.2,51.58],[-3.3,51.45],[-3.0,51.35],[-3.6,51.22],[-4.2,51.1],[-4.55,50.8],[-5.0,50.45],[-5.5,50.2]],
+  Ireland: [[-10.3,51.6],[-9.8,51.45],[-9.0,51.55],[-8.3,51.8],[-7.6,51.95],[-7.0,52.1],[-6.35,52.17],[-6.1,52.7],[-10.4,52.7]],
+  Jersey: [[-2.25,49.26],[-2.02,49.23],[-2.05,49.17],[-2.24,49.17]], Guernsey: [[-2.67,49.43],[-2.52,49.5],[-2.53,49.42]],
   Corsica: [[8.6,41.45],[8.6,42.0],[8.7,42.6],[9.3,43.0],[9.5,42.6],[9.5,41.9],[9.2,41.42]],
   Sardinia: [[8.2,39.0],[8.4,39.9],[8.4,40.6],[8.2,40.9],[9.1,41.18],[9.7,40.9],[9.8,40.0],[9.6,39.2],[9.0,39.0],[8.6,38.9]],
   Sicily: [[12.4,37.8],[12.6,38.1],[13.4,38.2],[14.5,38.05],[15.55,38.28],[15.3,37.6],[15.1,36.7],[14.4,36.8],[13.0,37.5]],
@@ -449,6 +459,7 @@ const ISLANDS = {
 // ---------------- Navigable rivers (lon, lat), from the sea upstream ----------------
 const RIVERS = [
   { id: 'nile', name: 'Nile', current: 1.6, pts: [[30.4, 31.62], [30.42, 31.3], [30.6, 31.0], [30.85, 30.65], [31.05, 30.35], [31.2, 30.12], [31.24, 30.04]] },
+  { id: 'loire', name: 'Loire', current: 0.9, pts: [[-2.25, 47.26], [-2.0, 47.28], [-1.8, 47.25], [-1.55, 47.21]] },
   { id: 'guadalquivir', name: 'Guadalquivir', current: 1.0, pts: [[-6.56, 36.79], [-6.33, 36.86], [-6.2, 37.0], [-6.08, 37.15], [-6.02, 37.28], [-5.99, 37.38]] },
   { id: 'danube', name: 'Danube', current: 1.4, pts: [[29.92, 45.15], [29.5, 45.2], [29.0, 45.25], [28.5, 45.35], [28.05, 45.4], [27.95, 45.05], [27.85, 44.6], [27.5, 44.2], [27.0, 44.05], [26.5, 43.95], [25.97, 43.85]] },
 ];
@@ -532,6 +543,7 @@ const REGIONS = [
   { id: 'levant',     name: 'Levant Sea',          lon: 31.5, lat: 33.6, r: 280, base: 0 },
   { id: 'euxine',     name: 'Black Sea',           lon: 34.5, lat: 43.4, r: 380, base: 1 },
   { id: 'biscay',     name: 'Bay of Biscay',       lon: -5.0, lat: 45.0, r: 260, base: 0 },
+  { id: 'channel',    name: 'English Channel',     lon: -2.5, lat: 49.8, r: 240, base: 0 },
   { id: 'lusitania',  name: 'Portuguese coast',    lon: -10.5,lat: 39.5, r: 260, base: 0 },
   { id: 'morocco',    name: 'Moroccan coast',      lon: -10.5,lat: 33.0, r: 260, base: 1 },
   { id: 'islands',    name: 'Madeira & Canaries',  lon: -16.5,lat: 30.0, r: 280, base: 0 },
@@ -637,6 +649,10 @@ const PORTS = [
   { id:'tripoli',   name:'Tripoli',        lon:13.18, lat:32.90, f:'barbary', cheap:['salt'],                dear:['timber','cloth','grain'], yard:1 },
   { id:'tunis',     name:'Tunis',          lon:10.20, lat:36.80, f:'barbary', cheap:['oil','grain'],         dear:['timber','cloth'], yard:0 },
   // ---- the Atlantic and Africa ----
+  { id:'nantes',    name:'Nantes',         lon:-1.55, lat:47.21, f:'france',  cheap:['wine','salt'],         dear:['sugar','spices','oil'], yard:1, atl:1, river:'loire' },
+  { id:'saintmalo', name:'Saint-Malo',     lon:-2.02, lat:48.64, f:'france',  cheap:['fish','cloth'],        dear:['wine','salt','spices'], yard:1, atl:1, w:[-2.05,48.73] },
+  { id:'plymouth',  name:'Plymouth',       lon:-4.14, lat:50.37, f:'england', cheap:['fish','timber'],       dear:['wine','salt','sugar','spices'], yard:1, atl:1, w:[-4.14,50.27] },
+  { id:'southampton',name:'Southampton',   lon:-1.40, lat:50.88, f:'england', cheap:['cloth'],               dear:['wine','oil','silk','spices'], yard:0, atl:1, w:[-1.35,50.74] },
   { id:'larochelle',name:'La Rochelle',    lon:-1.15, lat:46.16, f:'france',  cheap:['salt','wine'],         dear:['spices','sugar'], yard:1, atl:1 },
   { id:'bordeaux',  name:'Bordeaux',       lon:-1.20, lat:45.55, f:'france',  cheap:['wine'],                dear:['cloth','oil'], yard:0, atl:1 },
   { id:'bilbao',    name:'Bilbao',         lon:-2.93, lat:43.38, f:'spain',   cheap:['timber','cloth'], dear:['wine','oil','grain'], yard:1, atl:1 },
@@ -690,6 +706,8 @@ const SEA_WAYPOINTS = [
   [-17.2,18.0],[-17.6,16.0],[-18.2,14.6],[-17.4,13.2],[-17.0,12.0],[-15.8,10.6],[-14.6,9.4],[-13.6,8.0],[-12.0,6.6],[-10.5,5.4],[-8.4,4.35],[-6.5,4.3],[-4.5,4.6],[-2.5,4.45],[-1.3,4.6],[0.5,5.1],[2.5,5.8],[4.0,5.6],
   [-16.0,33.2],[-17.0,32.3],[-13.5,32.5],[-12.0,34.5],[-14.0,35.8],[-17.0,36.5],[-20.0,37.0],[-23.0,37.4],[-24.5,38.3],[-25.5,37.4],[-26.5,38.3],[-27.2,38.3],
   [-22.0,34.0],[-19.0,30.0],[-20.0,26.0],[-21.0,22.0],[-22.5,18.2],[-23.0,15.5],[-24.0,14.4],[-21.5,17.0],[-25.2,16.4],[-24.9,15.6],[-20.0,12.0],[-18.0,8.0],[-14.0,5.5],[-11.0,4.6],
+  [-5.3,48.5],[-4.9,47.7],[-3.5,47.3],[-2.6,47.1],[-6.0,49.0],[-4.5,49.3],[-3.0,49.6],[-1.5,50.1],[0.0,50.3],[1.2,50.6],[1.6,51.1],[2.6,51.5],[-2.4,48.95],[-6.5,50.5],[-7.5,51.2],
+  [-2.0,47.28],[-1.8,47.25],
   [-12.0,38.0],[-15.0,40.0],[-11.0,42.0],[-12.0,45.0],[-7.0,46.0],[-4.0,46.5],[-1.7,45.95],[-25.0,30.0],[-26.0,22.0],[-25.0,10.0],
   [30.42,31.3],[30.6,31.0],[30.85,30.65],[31.05,30.35],[31.2,30.12],
   [-6.33,36.86],[-6.2,37.0],[-6.08,37.15],[-6.02,37.28],
@@ -795,6 +813,7 @@ const CARIB_MAIN = [
 const CARIB_ISLANDS = {
   Cuba: [[-84.95, 21.85], [-84.0, 22.75], [-83.0, 23.0], [-82.3, 23.15], [-81.5, 23.15], [-80.5, 22.95], [-79.5, 22.4], [-78.4, 22.4], [-77.4, 21.9], [-76.0, 21.15], [-75.6, 20.75],
     [-74.15, 20.25], [-74.5, 20.05], [-75.8, 19.95], [-77.0, 19.85], [-77.7, 19.85], [-77.3, 20.6], [-78.1, 20.75], [-79.0, 21.6], [-80.4, 21.8], [-81.2, 22.1], [-82.1, 22.3], [-82.8, 22.0], [-83.4, 22.2], [-84.4, 21.9]],
+  Pinos: [[-83.1, 21.65], [-82.85, 21.75], [-82.55, 21.68], [-82.55, 21.45], [-82.85, 21.35], [-83.1, 21.45]],
   Hispaniola: [[-74.45, 18.4], [-73.4, 19.8], [-72.8, 19.9], [-71.7, 19.85], [-70.5, 19.8], [-69.9, 19.65], [-69.2, 19.2], [-68.35, 18.6], [-68.7, 18.2], [-69.9, 18.42], [-70.5, 18.2],
     [-71.3, 17.6], [-71.8, 18.2], [-72.8, 18.15], [-73.8, 18.05], [-74.4, 18.3]],
   Jamaica: [[-78.35, 18.3], [-77.5, 18.5], [-76.3, 18.2], [-76.2, 17.9], [-76.9, 17.85], [-77.8, 17.85], [-78.35, 18.2]],
@@ -835,6 +854,7 @@ Object.assign(FACTIONS, {
   gujarat: { name: 'Sultanate of Gujarat', adj: 'Gujarati', color: '#d4573b', ruler: 'Sultan Muzaffar Shah III' },
   mughal:  { name: 'Mughal Empire', adj: 'Mughal', color: '#2f8f5b', ruler: 'Emperor Akbar' },
   calicut: { name: 'Zamorin of Calicut', adj: 'Malabari', color: '#c9862b', ruler: 'the Zamorin' },
+  interlopers: { name: 'Interlopers', adj: 'Interloper', color: '#5b6b5e', ruler: 'no one', internal: true },
   swahili: { name: 'Swahili Cities', adj: 'Swahili', color: '#9a3b3b', ruler: 'the Sultan of Mombasa' },
 });
 NATIONS.push('england', 'gujarat', 'mughal', 'calicut', 'swahili');
@@ -872,6 +892,7 @@ PORTS.push(
   { id:'riohacha',   th:'carib', name:'Río de la Hacha', lon:-72.9, lat:11.55, f:'spain',     cheap:['pearls'],             dear:['wine','cloth','grain'], yard:0 },
   { id:'margarita',  th:'carib', name:'Margarita',       lon:-63.9, lat:10.95, f:'spain',     cheap:['pearls','salt'],      dear:['wine','grain','cloth'], yard:0, w:[-63.9,10.8] },
   { id:'jamaica',    th:'carib', name:'Villa de la Vega', lon:-76.95, lat:17.98, f:'spain',   cheap:['hides'],              dear:['wine','cloth'], yard:0 },
+  { id:'pinos',      th:'carib', name:'Isla de Pinos',   lon:-82.8, lat:21.74, f:'interlopers', cheap:['hides','logwood','pearls'], dear:['wine','oil','cloth','grain','timber'], yard:1, haven:1, w:[-82.8,21.86] },
   { id:'caroline',   th:'carib', name:'Fort Caroline',   lon:-81.5, lat:30.39, f:'huguenot',  cheap:['hides'],              dear:['wine','grain','cloth','timber'], yard:0 },
   // ---- the Arabian Sea ----
   { id:'suez',       th:'indian', name:'Suez',      lon:32.55, lat:29.95, f:'ottoman', cheap:['timber'],                dear:['spices','calico','coffee','grain'], yard:1, w:[32.52,29.75] },
@@ -1033,6 +1054,17 @@ const SPECIALISTS = [
   { id: 'renegade', port: 'algiers',   name: 'Ja’far the Sicilian', role: 'Renegade lookout', origin: 'Taken as a boy off Trapani; now a reis who knows every corsair.', effect: 'You see corsairs and renegades from 250 miles away.', fee: 330, wage: 28 },
   { id: 'laz',      port: 'trebizond', name: 'Rıza the Laz',           role: 'Black Sea boatman', origin: 'From the Laz coast east of Trebizond, where boys row before they walk.', effect: 'Black Sea storms cannot touch you, and you sail 8% faster there.', fee: 280, wage: 22 },
   { id: 'navigator',port: 'alexandria',name: 'Ibrahim al-Iskandarani', role: 'Mu‘allim (navigator)', origin: 'Reads the Levant winds like scripture.', effect: 'Never becalmed: your ship always finds a working breeze.', fee: 300, wage: 25 },
+  { id: 'cosmo',    port: 'lisbon',    name: 'Gaspar Ferreira',        role: 'Piloto-mor',      origin: 'Has rounded the Cape of Good Hope eleven times with the India fleets.', effect: 'Ocean voyages are a fifth shorter, and you never miss the monsoon season.', fee: 480, wage: 40 },
+  { id: 'andalusi', port: 'tetouan',   name: 'Ahmad al-Gharnati',      role: 'Andalusi broker',  origin: 'His family left Granada with the keys of their house, and still trade with every Maghreb port.', effect: 'Buys 8% cheaper in Moroccan and Barbary markets.', fee: 300, wage: 25 },
+  { id: 'rover',    port: 'larochelle',name: 'Élie Jourdain',          role: 'Huguenot rover',  origin: 'Took his first Spanish prize off Hispaniola at nineteen.', effect: 'Prize money and privateering bonuses are worth 25% more.', fee: 400, wage: 34 },
+  { id: 'nogai',    port: 'gozleve',   name: 'Temir the Nogai',        role: 'Steppe scout',    origin: 'Has ridden against the Cossacks on both banks of the Dnieper.', effect: 'Cossack chaikas never hunt you.', fee: 260, wage: 22 },
+  { id: 'ataman',   port: 'caffa',     name: 'Ostap Zaporozhets',      role: 'Cossack oar-master', origin: 'Ransomed out of Caffa, he has no wish to go back to the Sich.', effect: 'Oared ships row 15% faster.', fee: 300, wage: 26 },
+  { id: 'cornish',  port: 'plymouth',  name: 'Jory Tregarthen',        role: 'Cornish master',  origin: 'Learned square sails on the Newfoundland fishing runs.', effect: 'Square-rigged ships turn as fast as lateen ones.', fee: 360, wage: 30 },
+  { id: 'bania',    port: 'diu',       name: 'Shantidas Mehta',        role: 'Bania broker',    origin: 'A Jain merchant whose letters of credit are honoured from Mocha to Malacca.', effect: 'Sells 6% dearer in every Arabian Sea market.', fee: 380, wage: 32 },
+  { id: 'ahadi',    port: 'surat',     name: 'Mirza Yusuf Beg',        role: 'Ahadi officer',   origin: 'A gentleman trooper of the Mughal household, sent to learn the sea.', effect: 'No sailor deserts you, and morale never falls below 30.', fee: 420, wage: 36 },
+  { id: 'mappila',  port: 'calicut',   name: 'Pokker Marakkar',        role: 'Mappila pilot',   origin: 'Sailed with the Zamorin\u2019s paraos against the Portuguese.', effect: 'Monsoon storms cannot touch you, and the Malabar ports admit you in the monsoon.', fee: 340, wage: 28 },
+  { id: 'mwalimu',  port: 'mombasa',   name: 'Mwinyi Bakari',          role: 'Mwalimu (navigator)', origin: 'Keeps the rutters of his grandfathers, written in Arabic and Swahili.', effect: 'Fever never takes your men, and the crew eats a quarter less.', fee: 320, wage: 26 },
+  { id: 'cimarron', port: 'pinos',     name: 'Diego Biohó',            role: 'Cimarrón guide',  origin: 'Escaped from Cartagena and lives free in the hills; he knows every Spanish watch post.', effect: 'Trading in the Indies never raises a Spanish bounty.', fee: 300, wage: 25 },
 ];
 const MAX_LTS = 3;
 const hasLt = id => !!(S && S.lts && S.lts.includes(id));
@@ -1134,7 +1166,7 @@ function portEventMul(p, g) {
   return m;
 }
 const TH_ONLY = { carib: ['spain', 'france', 'huguenot', 'england'], indian: ['portugal', 'ottoman', 'gujarat', 'mughal', 'calicut', 'swahili'] };
-const inThFaction = f => { const th = curTh(); return th === 'med' ? !['england', 'gujarat', 'mughal', 'calicut', 'swahili'].includes(f) : TH_ONLY[th].includes(f); };
+const inThFaction = f => { const th = curTh(); return th === 'med' ? !['gujarat', 'mughal', 'calicut', 'swahili'].includes(f) : TH_ONLY[th].includes(f); };
 function evTh(e) {
   if (e.port) { const q = portById(e.port); return q ? q.th || 'med' : 'med'; }
   if (e.region) { const r = REGIONS.find(x => x.id === e.region); return r ? r.th || 'med' : 'med'; }
@@ -1220,7 +1252,7 @@ function newGame(name, originId) {
     rep, allegiance: null, discovered: {}, contracts: [], kills: 0, trades: 0,
     markets: {}, offers: {}, npcs: [], nextNpcId: 1,
     wind: { dir: rand(0, TAU), str: 12, tdir: rand(0, TAU), tstr: 12 },
-    lastDay: 0, siegeAid: 0, flags: { atlMap: 1, bsMap: 1, thMap: 1 }, theatre: 'med', docked: home.id, pool: {},
+    lastDay: 0, siegeAid: 0, flags: { atlMap: 1, bsMap: 1, thMap: 1, chanMap: 1 }, theatre: 'med', docked: home.id, pool: {},
   };
   migrate();
   discoverNear(home.wx, home.wy, 260, true);
@@ -1236,6 +1268,13 @@ function migrate() {
     const dx = (OLD_LON0 - LON0) * KX;
     const sh = p => { if (p) p[0] += dx; };
     if (S.v) { S.x += dx; (S.route || []).forEach(sh); sh(S.target); for (const n of S.npcs) { n.x += dx; (n.pts || []).forEach(sh); } }
+    pathCache.clear();
+  }
+  if (!S.flags.chanMap) {
+    S.flags.chanMap = 1;
+    const dy = (LAT0 - OLD_LAT0) * KY;
+    const sh = p => { if (p) p[1] += dy; };
+    if (S.v && (S.theatre || 'med') === 'med') { S.y += dy; (S.route || []).forEach(sh); sh(S.target); for (const n of S.npcs) { n.y += dy; (n.pts || []).forEach(sh); } }
     pathCache.clear();
   }
   S.fleet ??= []; S.posts ??= {}; S.campaigns ??= {}; S.nextShipNo ??= 1;
@@ -1311,8 +1350,8 @@ function basePrice(p, g) {
   const m = market(p), t = goodTarget(p, g);
   return GOODS[g].base * goodMod(p, g) * Math.pow((t + 12) / (Math.max(0, m[g]) + 12), 0.5);
 }
-const buyPrice = (p, g) => Math.max(1, Math.round(basePrice(p, g) * Math.max(1.0, 1.08 - 0.008 * S.skills.trade) * (S.posts && S.posts[p.id] ? 0.92 : 1)));
-const sellPrice = (p, g) => Math.max(1, Math.round(basePrice(p, g) * Math.min(hasLt('purser') ? 0.99 : 0.98, 0.92 + 0.006 * S.skills.trade + (hasLt('purser') ? 0.03 : 0))));
+const buyPrice = (p, g) => Math.max(1, Math.round(basePrice(p, g) * Math.max(1.0, 1.08 - 0.008 * S.skills.trade) * (S.posts && S.posts[p.id] ? 0.92 : 1) * (hasLt('andalusi') && (p.f === 'morocco' || p.f === 'barbary') ? 0.92 : 1)));
+const sellPrice = (p, g) => Math.max(1, Math.round(basePrice(p, g) * Math.min(hasLt('purser') ? 0.99 : 0.98, 0.92 + 0.006 * S.skills.trade + (hasLt('purser') ? 0.03 : 0)) * (hasLt('bania') && p.th === 'indian' ? 1.06 : 1)));
 function tickMarkets() {
   for (const p of PORTS) {
     const m = market(p);
@@ -1346,7 +1385,7 @@ function shipKnots(def, heading, sail, extra = 1, player = false) {
   const rel = Math.max(0, relWind(heading) - (player && hasLt('master') ? 0.17 : 0));
   return def.speed * extra * ((1 - def.oars) * polar(rel, def.rig) * windK * sf + def.oars * (sail === 1 ? 0.7 : 1));
 }
-const playerKnots = () => shipKnots(shipDef(), S.heading, S.sail, fleetSpeedFactor() * (1 + 0.04 * S.skills.nav) * crewFactor() * (hasLt('pilot') ? 1.05 : 1) * (hasLt('laz') && inBlackSea(S.x, S.y) ? 1.08 : 1), true);
+const playerKnots = () => shipKnots(shipDef(), S.heading, S.sail, fleetSpeedFactor() * (1 + 0.04 * S.skills.nav) * crewFactor() * (hasLt('pilot') ? 1.05 : 1) * (hasLt('laz') && inBlackSea(S.x, S.y) ? 1.08 : 1) * (hasLt('ataman') && shipDef().oars > 0.5 ? 1.15 : 1), true);
 
 // ---------- discovery ----------
 function discoverNear(x, y, r, silent) {
@@ -1543,7 +1582,7 @@ function npcVisible(n) {
   if (d <= sightRange()) return true;
   return hasLt('renegade') && (n.kind === 'corsair' || n.kind === 'rogue') && d <= 250;
 }
-const huntsYou = n => isHostile(n.f) || (n.f === 'portugal' && n.kind === 'patrol' && curTh() === 'indian' && !hasCartaz()) || (n.kind === 'hunter' && (S.bounty[n.f] || 0) >= 150) || (n.kind === 'escort' && !!S.flags['angry_' + n.convoy]);
+const huntsYou = n => !(n.kind === 'cossack' && hasLt('nogai')) && (isHostile(n.f) || (n.f === 'portugal' && n.kind === 'patrol' && curTh() === 'indian' && !hasCartaz()) || (n.kind === 'hunter' && (S.bounty[n.f] || 0) >= 150) || (n.kind === 'escort' && !!S.flags['angry_' + n.convoy]));
 function npcAI() {
   if (S.docked || B) return;
   nearShip = null; let nd = 28;
@@ -1588,7 +1627,7 @@ function update(dtReal) {
 }
 function updatePlayer(dtReal, dtH) {
   const def = shipDef();
-  const turn = (def.rig === 'square' ? 0.9 : 1.4) * (0.7 + 0.3 * crewFactor()) * (hasLt('master') ? 1.33 : 1) * dtReal * Math.min(timeScale, 2);
+  const turn = (def.rig === 'square' && !hasLt('cornish') ? 0.9 : 1.4) * (0.7 + 0.3 * crewFactor()) * (hasLt('master') ? 1.33 : 1) * dtReal * Math.min(timeScale, 2);
   let steer = 0;
   if (keys.left) steer -= 1;
   if (keys.right) steer += 1;
@@ -1655,7 +1694,7 @@ function arrive() {
 function dailyTick() {
   const def = shipDef();
   // provisions
-  S.provisions -= S.crew / 10;
+  S.provisions -= S.crew / 10 * (hasLt('mwalimu') ? 0.75 : 1);
   if (S.provisions < 0) {
     S.provisions = 0; S.morale = clamp(S.morale - 12, 0, 100);
     const lost = Math.max(1, Math.ceil(S.crew * (hasLt('surgeon') ? 0.025 : 0.05))); S.crew = Math.max(1, S.crew - lost);
@@ -1683,14 +1722,15 @@ function dailyTick() {
     S.gold += pay; toast('Stipend paid', `${pay} ducats from the ${FACTIONS[S.allegiance].name}.`, 'gold');
   }
   // mutiny risk
-  if (S.morale < 15 && Math.random() < 0.3) {
+  if (hasLt('ahadi')) S.morale = Math.max(S.morale, 30);
+  if (S.morale < 15 && !hasLt('ahadi') && Math.random() < 0.3) {
     const lost = Math.ceil(S.crew * 0.15); S.crew = Math.max(1, S.crew - lost);
     toast('Desertion', `${lost} sailors slip away in the night. Raise morale: pay, feed, win.`, 'bad');
   }
   // storms
   const inBS = inBlackSea(S.x, S.y);
   const inOc = inOcean(S.x, S.y);
-  const mo = curDate().getUTCMonth(), hurricane = curTh() === 'carib' && mo >= 7 && mo <= 9, monsoonPeak = curTh() === 'indian' && mo >= 5 && mo <= 7;
+  const mo = curDate().getUTCMonth(), hurricane = curTh() === 'carib' && mo >= 7 && mo <= 9, monsoonPeak = curTh() === 'indian' && mo >= 5 && mo <= 7 && !hasLt('mappila');
   if (!S.docked && Math.random() < (inBS ? 0.09 : inOc ? 0.05 : hurricane ? 0.1 : monsoonPeak ? 0.09 : 0.035) && !(inBS && hasLt('laz'))) {
     const dmg = Math.round(rand(4, 16) * def.hull / 80 * (1 - 0.06 * S.skills.nav) * (hasLt('pilot') ? 0.5 : 1) * (inOc && def.oars > 0.5 ? 1.6 : 1) * (hurricane ? 2.2 : monsoonPeak ? 1.4 : 1));
     S.ship.hull = Math.max(1, S.ship.hull - dmg);
@@ -1714,7 +1754,7 @@ function dailyTick() {
   // fever on the Guinea coast
   { const [lo, la] = unproj(S.x, S.y);
     const th = curTh(), feverish = th === 'med' ? (la < 12.5 && lo > -18.5 ? 0.3 : 0) : th === 'carib' ? (la < 12.5 ? 0.18 : 0.04) : (la < 2 ? 0.15 : 0);
-    if (feverish && !voyageMute && !hasLt('surgeon') && Math.random() < feverish) {
+    if (feverish && !voyageMute && !hasLt('surgeon') && !hasLt('mwalimu') && Math.random() < feverish) {
       const sick = Math.max(1, Math.ceil(S.crew * 0.04)); S.crew = Math.max(1, S.crew - sick);
       toast('Fever', th === 'med' ? `The Guinea fever takes ${sick} of your men. A surgeon would save them.` : `Fever takes ${sick} of your men. A surgeon would save them.`, 'bad');
     } }
@@ -1885,14 +1925,14 @@ function endBattle(result) {
       if (q > 0) { S.cargo[g] = (S.cargo[g] || 0) + q; S.basis[g] = S.basis[g] ?? GOODS[g].base * 0.6; B.loot.push(`${q} ${GOODS[g].unit} of ${GOODS[g].name.toLowerCase()}`); }
     }
     if (result === 'captured') {
-      const prize = Math.round(nd.price * 0.3); S.gold += prize; B.loot.push(`${fmt(prize)} ducats prize money for the hull`);
+      const prize = Math.round(nd.price * 0.3 * (hasLt('rover') ? 1.25 : 1)); S.gold += prize; B.loot.push(`${fmt(prize)} ducats prize money for the hull`);
       const vol = Math.min(Math.floor(n.crew * 0.25), pd.crewMax - S.crew);
       if (vol > 0) { S.crew += vol; B.loot.push(`${vol} of her sailors sign on with you`); }
     }
     if (n.f === 'rogue') { const r = 150 + S.level * 30; S.gold += r; B.loot.push(`${fmt(r)} ducats: every navy pays for renegades`); }
     else if (B.licensed) {
       const lic = licensors().find(L => L === 'knights' ? n.f === 'ottoman' : atWar(L, n.f));
-      const bonus = Math.round(nd.price * 0.08 + 60); S.gold += bonus; addRep(lic, 3);
+      const bonus = Math.round((nd.price * 0.08 + 60) * (hasLt('rover') ? 1.25 : 1)); S.gold += bonus; addRep(lic, 3);
       B.loot.push(`${fmt(bonus)} ducats prize bonus from the ${FACTIONS[lic].name}`);
     }
     if (n.kind === 'hunter') { addBounty(n.f, 120); B.loot.push(`The ${FACTIONS[n.f].adj} raise the price on your head`); }
@@ -1938,6 +1978,7 @@ function endBattle(result) {
 function routeDist(a, b) { const r = shortestPath(a.node, b.node); return r ? r.length : Math.hypot(a.x - b.x, a.y - b.y) * 1.4; }
 function makeOffers(p) {
   const list = [];
+  if (p.haven) { S.offers[p.id] = { day: dayIndex(), list }; return; }
   const enemies = Object.keys(FACTIONS).filter(f => atWar(f, p.f) && inThFaction(f) && (ROGUES_ENABLED || f !== 'rogue'));
   const dests = TPORTS().filter(q => q !== p && !q.site && !atWar(q.f, p.f));
   for (let i = 0; i < 3; i++) {
@@ -2084,9 +2125,9 @@ function holdingsMonthly() {
 }
 function holdingsHTML(p) {
   const po = S.posts[p.id];
-  if (!po && p.f === 'none') {
+  if (!po && (p.f === 'none' || (p.haven && p.f === 'interlopers'))) {
     const cost = 6000, ok = S.level >= 4 && S.gold >= cost;
-    return `<div class="card site"><h3>${esc(p.name)}: an empty anchorage</h3><p class="mute">A sheltered bay, fresh water and nobody’s flag. Build a mole, a chapel and a tower, and it becomes a harbour of your own: monthly dues, a warehouse, safe waters for you, and a base no power can close.</p>
+    return `<div class="card site"><h3>${esc(p.name)}: ${p.haven ? 'an interlopers\u2019 anchorage' : 'an empty anchorage'}</h3><p class="mute">${p.haven ? 'The smugglers would welcome a protector, and would go on trading under your flag. ' : ''}A sheltered bay, fresh water and nobody’s flag. Build a mole, a chapel and a tower, and it becomes a harbour of your own: monthly dues, a warehouse, safe waters for you, and a base no power can close.</p>
       <div class="cardhead"><div><small>Costs ${fmt(cost)} ducats. Requires level 4 (you are level ${S.level}). Undefended harbours tempt corsairs, so plan to garrison it.</small></div>
       <button class="btn primary" data-act="found" ${ok ? '' : 'disabled'}>Found your harbour</button></div></div>`;
   }
@@ -2196,7 +2237,7 @@ const hasCartaz = () => (S.cartazUntil && dayIndex() <= S.cartazUntil) || S.alle
 const indiesLawful = () => S.allegiance === 'spain' || S.origin === 'naples' || (S.licenceUntil && dayIndex() <= S.licenceUntil);
 function harbourOpen(p) {
   const b = S.bounty[p.f] || 0;
-  if (p.malabar) { const mo = curDate().getUTCMonth(); if (mo >= 5 && mo <= 7) return { ok: false, why: 'Closed by the monsoon' }; }
+  if (p.malabar && !hasLt('mappila')) { const mo = curDate().getUTCMonth(); if (mo >= 5 && mo <= 7) return { ok: false, why: 'Closed by the monsoon' }; }
   if (b >= 600) return { ok: false, why: 'Wanted here' };
   if (isHostile(p.f) && !(p.f === 'barbary' && hasLt('interp'))) return { ok: false, why: 'Harbour closed' };
   return { ok: true };
@@ -2237,7 +2278,7 @@ function buy(p, g, n) {
   renderPort();
 }
 function contraband(p, value) {
-  if ((p.th || 'med') !== 'carib' || p.f !== 'spain' || indiesLawful() || value <= 0) return;
+  if ((p.th || 'med') !== 'carib' || p.f !== 'spain' || indiesLawful() || hasLt('cimarron') || value <= 0) return;
   addBounty('spain', value * 0.06);
   if (!S.flags.contraWarn || dayIndex() - S.flags.contraWarn > 20) { S.flags.contraWarn = dayIndex(); toast('Contraband', 'Only Spanish subjects and licensed traders may trade in the Indies. The crown\u2019s officials note your name. Buy a licence from the Casa de Contratación in Seville.', 'bad'); }
 }
@@ -2331,7 +2372,7 @@ const LABELS = [
   ['Sinus Gallicus', 5.2, 42.5, 0.8, 'sea'], ['Mare Libycum', 22.0, 33.4, 1, 'sea'], ['Mare Levanticum', 31.5, 33.2, 0.9, 'sea'],
   ['HISPANIA', -3.6, 39.3, 1.2, 'land'], ['GALLIA', 2.6, 45.3, 1.2, 'land'], ['ITALIA', 12.6, 42.6, 1.1, 'land'], ['DALMATIA', 17.8, 44.2, 0.9, 'land'],
   ['RVMELIA', 25.5, 42.6, 1.1, 'land'], ['GRAECIA', 21.7, 39.6, 0.9, 'land'], ['ANATOLIA', 31.5, 38.6, 1.2, 'land'], ['SYRIA', 36.3, 34.2, 0.8, 'land'],
-  ['OCEANVS  ATLANTICVS', -17.5, 35.0, 1.5, 'sea'], ['Sinus Aquitanicus', -4.5, 45.3, 0.9, 'sea'], ['Insulae Fortunatae', -15.8, 29.2, 0.8, 'sea'], ['Azores', -25.5, 38.9, 0.9, 'sea'],
+  ['OCEANVS  ATLANTICVS', -17.5, 35.0, 1.5, 'sea'], ['Sinus Aquitanicus', -4.5, 45.3, 0.9, 'sea'], ['Oceanus Britannicus', -3.2, 49.55, 0.9, 'sea'], ['ANGLIA', -2.4, 51.6, 1.1, 'land'], ['BRITANNIA  MINOR', -2.9, 48.15, 0.75, 'land'], ['HIBERNIA', -8.4, 52.35, 0.8, 'land'], ['Insulae Fortunatae', -15.8, 29.2, 0.8, 'sea'], ['Azores', -25.5, 38.9, 0.9, 'sea'],
   ['Insulae Capitis Viridis', -24.0, 17.6, 0.8, 'sea'], ['Sinus Aethiopicus', -6.0, 4.6, 1.1, 'sea'], ['Mare Tenebrosum', -22.0, 26.0, 1.2, 'sea'],
   ['LVSITANIA', -8.0, 40.0, 1.0, 'land'], ['MAVRETANIA', -6.0, 32.2, 1.1, 'land'], ['LIBYA  DESERTA', 0.0, 22.0, 1.6, 'land'], ['GVINEA', -8.0, 9.5, 1.3, 'land'], ['NIGRITARVM  REGIO', -4.0, 14.0, 1.2, 'land'],
   ['PONTVS  EVXINVS', 34.2, 43.5, 1.2, 'sea'], ['TARTARIA', 32.0, 46.8, 1.0, 'land'], ['CIRCASSIA', 40.6, 44.6, 0.9, 'land'], ['VALACHIA', 26.2, 44.6, 0.9, 'land'],
@@ -2414,6 +2455,7 @@ const FLAG_PAINT = {
   gujarat(g) { g.fillStyle = '#c8452f'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#f2d24c'; g.beginPath(); g.arc(30, 20, 9, 0, TAU); g.fill(); g.fillStyle = '#c8452f'; g.beginPath(); g.arc(33, 18, 7.5, 0, TAU); g.fill(); },
   mughal(g) { g.fillStyle = '#2f8f5b'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#f2c94c'; g.beginPath(); g.arc(30, 20, 7, 0, TAU); g.fill(); for (let k = 0; k < 12; k++) { const a = k / 12 * TAU; g.fillRect(30 + Math.cos(a) * 10 - 1, 20 + Math.sin(a) * 10 - 1, 2, 2); } },
   calicut(g) { g.fillStyle = '#b8471c'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#f4efe2'; g.beginPath(); g.ellipse(30, 20, 10, 6, 0.4, 0, TAU); g.fill(); g.fillStyle = '#b8471c'; g.beginPath(); g.ellipse(32, 19, 5, 2.5, 0.4, 0, TAU); g.fill(); },
+  interlopers(g) { g.fillStyle = '#3d4a40'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#d8cfb8'; g.beginPath(); g.moveTo(8, 32); g.lineTo(30, 8); g.lineTo(52, 32); g.closePath(); g.fill(); g.fillStyle = '#3d4a40'; g.fillRect(28, 20, 4, 12); },
   swahili(g) { g.fillStyle = '#9a2b2b'; g.fillRect(0, 0, 60, 40); g.strokeStyle = '#f4efe2'; g.lineWidth = 2; g.strokeRect(5, 5, 50, 30); },
   player(g) { g.fillStyle = '#f2c94c'; g.fillRect(0, 0, 60, 40); g.fillStyle = '#22190e'; g.beginPath(); g.moveTo(0, 40); g.lineTo(30, 12); g.lineTo(60, 40); g.lineTo(60, 32); g.lineTo(30, 4); g.lineTo(0, 32); g.closePath(); g.fill(); },
   none(g) { g.fillStyle = '#8c8576'; g.fillRect(0, 0, 60, 40); },
@@ -2539,7 +2581,7 @@ const FR_ADJ = { // English adjective -> [m sg, f sg, m pl, f pl]
   Portuguese: ['portugais', 'portugaise', 'portugais', 'portugaises'], Moroccan: ['marocain', 'marocaine', 'marocains', 'marocaines'],
   Huguenot: ['huguenot', 'huguenote', 'huguenots', 'huguenotes'], Crimean: ['de Crimée', 'de Crimée', 'de Crimée', 'de Crimée'],
   English: ['anglais', 'anglaise', 'anglais', 'anglaises'], Gujarati: ['gujarati', 'gujaratie', 'gujaratis', 'gujaraties'], Mughal: ['moghol', 'moghole', 'moghols', 'mogholes'],
-  Malabari: ['malabar', 'malabare', 'malabars', 'malabares'], Swahili: ['swahili', 'swahilie', 'swahilis', 'swahilies'],
+  Malabari: ['malabar', 'malabare', 'malabars', 'malabares'], Swahili: ['swahili', 'swahilie', 'swahilis', 'swahilies'], Interloper: ['interlope', 'interlope', 'interlopes', 'interlopes'],
   Cossack: ['cosaque', 'cosaque', 'cosaques', 'cosaques'], Renegade: ['renégat', 'renégate', 'renégats', 'renégates'],
 };
 const FR_PEOPLE = { English: 'les Anglais', Gujarati: 'les Gujaratis', Mughal: 'les Moghols', Malabari: 'les Malabars', Swahili: 'les Swahilis', Spanish: 'les Espagnols', Venetian: 'les Vénitiens', Ottoman: 'les Ottomans', French: 'les Français', Genoese: 'les Génois',
@@ -2551,7 +2593,7 @@ const FR_FACTION = { // name -> [bare, article]
   'Barbary Regencies': ['Régences barbaresques', 'les'], 'Republic of Ragusa': ['République de Raguse', 'la'], 'Kingdom of Portugal': ['Royaume de Portugal', 'le'],
   'Saadian Sultanate': ['Sultanat saadien', 'le'], 'Huguenots of La Rochelle': ['Huguenots de La Rochelle', 'les'], 'Crimean Khanate': ['Khanat de Crimée', 'le'],
   'Zaporozhian Cossacks': ['Cosaques zaporogues', 'les'], 'Kingdom of England': ['Royaume d’Angleterre', 'le'], 'Sultanate of Gujarat': ['Sultanat du Gujarat', 'le'],
-  'Mughal Empire': ['Empire moghol', 'l’'], 'Zamorin of Calicut': ['Zamorin de Calicut', 'le'], 'Swahili Cities': ['Cités swahilies', 'les'], 'Rinnegati': ['Rinnegati', 'les'], 'Unclaimed': ['Sans maître', ''], 'Your holdings': ['vos possessions', ''],
+  'Mughal Empire': ['Empire moghol', 'l’'], 'Zamorin of Calicut': ['Zamorin de Calicut', 'le'], 'Swahili Cities': ['Cités swahilies', 'les'], 'Interlopers': ['Interlopes', 'les'], 'Rinnegati': ['Rinnegati', 'les'], 'Unclaimed': ['Sans maître', ''], 'Your holdings': ['vos possessions', ''],
 };
 const FR_NOUN = { // lower-case English noun -> [French, gender, plural]
   feluca: ['felouque', 'f'], fusta: ['fuste', 'f'], tartane: ['tartane', 'f'], galiot: ['galiote', 'f'], chaika: ['tchaïka', 'f'], bertone: ['bertone', 'f'],
@@ -2661,6 +2703,34 @@ const FR_ENTRIES = [
   ['Buy a licence', 'Acheter une licence'], ['Buy licence · {} d', c => `Acheter la licence · ${c[0]} d`], ['Licence granted', 'Licence accordée'],
   ['Only Spanish subjects may trade in the Indies. Foreigners who do are smugglers, and every sale raises a Spanish bounty. A licence makes your trade lawful for one year.', 'Seuls les sujets espagnols peuvent commercer aux Indes. Les étrangers qui le font sont des contrebandiers, et chaque vente fait monter une prime espagnole. Une licence rend votre commerce légal pendant un an.'],
   ['The Casa de Contratación enters your name. You may trade in the Indies for a year.', 'La Casa de Contratación inscrit votre nom. Vous pouvez commercer aux Indes pendant un an.'],
+  ['Interlopers’ run to the Indies', 'La course des interlopes vers les Indes'], ['Home with the interlopers', 'Retour avec les interlopes'],
+  ['French and English smugglers slip out of La Rochelle for the Indies without asking Seville. The hidden anchorage at Isla de Pinos takes anyone.', 'Les contrebandiers français et anglais quittent La Rochelle pour les Indes sans rien demander à Seville. Le mouillage caché d’Isla de Pinos accueille tout le monde.'],
+  ['North through the Florida channel in company with smugglers who never touch a Spanish quay.', 'Au nord par le canal de Floride, en compagnie de contrebandiers qui ne touchent jamais un quai espagnol.'],
+  ['Interlopers’ anchorage · no crown’s law', 'Mouillage des interlopes · aucune loi royale'], ['The anchorage', 'Le mouillage'],
+  ['No flag flies here and no harbour master asks your name. Smugglers, Huguenot rovers and runaway sailors trade under the pines: they buy the European goods the Spanish colonies are short of and sell hides, logwood and pearls. Anyone may water, victual and careen here, whoever is hunting them.', 'Aucun pavillon ne flotte ici et aucun capitaine de port ne demande votre nom. Contrebandiers, coureurs huguenots et marins en fuite commercent sous les pins : ils achètent les marchandises d’Europe qui manquent aux colonies espagnoles et vendent cuirs, bois de campêche et perles. Chacun peut y faire de l’eau, des vivres et caréner, quel que soit celui qui le pourchasse.'],
+  ['Under the pines', 'Sous les pins'],
+  ['English Channel', 'Manche'], ['Smugglers, Huguenot rovers and runaway sailors trade under the pines: they buy the European goods the Spanish colonies are short of and sell hides, logwood and pearls.', 'Contrebandiers, coureurs huguenots et marins en fuite commercent sous les pins : ils achètent les marchandises d’Europe qui manquent aux colonies espagnoles et vendent cuirs, bois de campêche et perles.'], ['Anyone may water, victual and careen here, whoever is hunting them.', 'Chacun peut y faire de l’eau, des vivres et caréner, quel que soit celui qui le pourchasse.'], ['Your flag flies over the anchorage now, but the trade goes on as before.', 'Votre pavillon flotte désormais sur le mouillage, mais le commerce continue comme avant.'], ['Loire', 'Loire'], ['an interlopers’ anchorage', 'un mouillage d’interlopes'], ['The smugglers would welcome a protector, and would go on trading under your flag.', 'Les contrebandiers accueilleraient volontiers un protecteur, et continueraient de commercer sous votre pavillon.'],
+  ['{}: an interlopers’ anchorage', c => `${c[0]} : un mouillage d’interlopes`],
+  ['Out of season, but your piloto-mor knows the way.', 'Hors saison, mais votre piloto-mor connaît la route.'],
+  ['Piloto-mor', 'Piloto-mor'], ['Has rounded the Cape of Good Hope eleven times with the India fleets.', 'A doublé onze fois le cap de Bonne-Espérance avec les flottes des Indes.'],
+  ['Ocean voyages are a fifth shorter, and you never miss the monsoon season.', 'Les traversées océaniques sont plus courtes d’un cinquième, et vous ne manquez jamais la saison de la mousson.'],
+  ['Andalusi broker', 'Courtier andalou'], ['His family left Granada with the keys of their house, and still trade with every Maghreb port.', 'Sa famille a quitté Grenade avec les clés de sa maison, et commerce encore avec tous les ports du Maghreb.'],
+  ['Buys 8% cheaper in Moroccan and Barbary markets.', 'Achète 8 % moins cher sur les marchés marocains et barbaresques.'],
+  ['Huguenot rover', 'Coureur huguenot'], ['Took his first Spanish prize off Hispaniola at nineteen.', 'A pris sa première prise espagnole au large d’Hispaniola à dix-neuf ans.'],
+  ['Prize money and privateering bonuses are worth 25% more.', 'Les parts de prise et les primes de course valent 25 % de plus.'],
+  ['Steppe scout', 'Éclaireur des steppes'], ['Has ridden against the Cossacks on both banks of the Dnieper.', 'A chevauché contre les Cosaques sur les deux rives du Dniepr.'], ['Cossack chaikas never hunt you.', 'Les tchaïkas cosaques ne vous pourchassent jamais.'],
+  ['Cossack oar-master', 'Maître de nage cosaque'], ['Ransomed out of Caffa, he has no wish to go back to the Sich.', 'Racheté à Caffa, il n’a aucune envie de retourner à la Sitch.'], ['Oared ships row 15% faster.', 'Les navires à rames nagent 15 % plus vite.'],
+  ['Cornish master', 'Maître cornouaillais'], ['Learned square sails on the Newfoundland fishing runs.', 'A appris les voiles carrées sur les campagnes de pêche de Terre-Neuve.'], ['Square-rigged ships turn as fast as lateen ones.', 'Les navires à voiles carrées virent aussi vite que les latins.'],
+  ['Bania broker', 'Courtier bania'], ['A Jain merchant whose letters of credit are honoured from Mocha to Malacca.', 'Un marchand jaïn dont les lettres de crédit sont honorées de Mocha à Malacca.'], ['Sells 6% dearer in every Arabian Sea market.', 'Vend 6 % plus cher sur tous les marchés de la mer d’Arabie.'],
+  ['Ahadi officer', 'Officier ahadi'], ['A gentleman trooper of the Mughal household, sent to learn the sea.', 'Un cavalier gentilhomme de la maison moghole, envoyé apprendre la mer.'], ['No sailor deserts you, and morale never falls below 30.', 'Aucun marin ne déserte, et le moral ne tombe jamais sous 30.'],
+  ['Mappila pilot', 'Pilote mappila'], ['Sailed with the Zamorin’s paraos against the Portuguese.', 'A navigué avec les paraos du Zamorin contre les Portugais.'],
+  ['Monsoon storms cannot touch you, and the Malabar ports admit you in the monsoon.', 'Les tempêtes de la mousson ne vous atteignent pas, et les ports du Malabar vous accueillent pendant la mousson.'],
+  ['Mwalimu (navigator)', 'Mwalimu (navigateur)'], ['Keeps the rutters of his grandfathers, written in Arabic and Swahili.', 'Garde les routiers de ses grands-pères, écrits en arabe et en swahili.'], ['Fever never takes your men, and the crew eats a quarter less.', 'La fièvre n’emporte jamais vos hommes, et l’équipage mange un quart de moins.'],
+  ['Cimarrón guide', 'Guide cimarrón'], ['Escaped from Cartagena and lives free in the hills; he knows every Spanish watch post.', 'Évadé de Cartagena, il vit libre dans les collines ; il connaît chaque poste de guet espagnol.'], ['Trading in the Indies never raises a Spanish bounty.', 'Commercer aux Indes ne fait jamais monter de prime espagnole.'], ['Interlopers', 'Interlopes'],
+  ['Settle by letter', 'Régler par lettre'], ['Bounties under {} ducats', c => `Primes de moins de ${c[0]} ducats`],
+  ['A notary sends your fine to the magistrates by letter of exchange, so you need not show your face in their harbour. It costs half as much again as paying in person, and earns you no goodwill.', 'Un notaire envoie votre amende aux magistrats par lettre de change : inutile de montrer votre visage dans leur port. Cela coûte moitié plus cher que de payer en personne, et ne vous vaut aucune bienveillance.'],
+  ['{} ducats on your head', c => `${c[0]} ducats sur votre tête`], ['Pay {} d', c => `Payer ${c[0]} d`], ['Bounty settled by letter', 'Prime réglée par lettre'],
+  ['The {} magistrates receive {} ducats and strike your name from the list.', c => `Les magistrats ${A(c[0], 'm', 1)} reçoivent ${c[1]} ducats et rayent votre nom de la liste.`],
   ['Buy licence', 'Acheter la licence'], ['Buy cartaz', 'Acheter un cartaz'], ['Extend', 'Prolonger'], ['Long voyages', 'Longs voyages'], ['To another chart', 'Vers une autre carte'], ['Carrera de Indias', 'Carrera de Indias'], ['Return to Castile', 'Retour en Castille'],
   ['Carreira da Índia', 'Carreira da Índia'], ['Home by the Cape', 'Retour par le Cap'], ['Caravan to Suez', 'Caravane vers Suez'], ['Caravan to Cairo', 'Caravane vers Cairo'],
   ['Across the Ocean Sea with the trade wind behind you, by the Canaries and Dominica to the Indies of Castile.', 'À travers la mer Océane, l’alizé dans le dos, par les Canaries et la Dominique jusqu’aux Indes de Castille.'],
@@ -3374,6 +3444,7 @@ const THEMES = {
   mughal:  { name: 'Naubat of Akbar', root: 52, mode: 'dorian', bpm: 84, beats: 4, prog: [0, 0, 3, 0, 4, 0, 6, 0], lead: 'rebab', bass: 'drone', perc: 'D...D.t.', seed: 61, drone: true },
   calicut: { name: 'Song of Malabar', root: 55, mode: 'mixolydian', bpm: 104, beats: 4, prog: [0, 3, 0, 4, 0, 3, 4, 0], lead: 'ney', bass: 'drone', perc: 'D.tt.tD.', seed: 67, drone: true },
   swahili: { name: 'Ngoma of the coast', root: 57, mode: 'mixolydian', bpm: 116, beats: 4, prog: [0, 3, 4, 0, 0, 3, 4, 0], lead: 'oud', bass: 'oud', perc: 'D.tD.tt.', seed: 71 },
+  interlopers: { name: 'Under the pines', root: 50, mode: 'dorian', bpm: 66, beats: 3, prog: [0, 6, 0, 4, 0, 6, 3, 0], lead: 'recorder', bass: 'lute', perc: null, seed: 79 },
   player:  { name: 'Your own harbour', root: 52, mode: 'dorian', bpm: 80, beats: 3, prog: [0, 6, 2, 6, 0, 3, 4, 0], lead: 'lute', bass: 'viol', perc: null, seed: 43 },
   none:    { name: 'Wind over an empty bay', root: 50, mode: 'dorian', bpm: 50, beats: 4, prog: [0, 0, 6, 0], lead: 'recorder', bass: 'drone', perc: null, seed: 47 },
 };
@@ -3498,7 +3569,7 @@ const catOf = g => (GOOD_CATS.find(c => c[2].includes(g)) || ['other', 'Other'])
 let marketFilter = 'best';
 function townStyle(f) {
   return ({ ottoman: 'islamic', barbary: 'islamic', morocco: 'islamic', crimea: 'islamic', spain: 'iberian', portugal: 'iberian', france: 'french', huguenot: 'french',
-    venice: 'italian', genoa: 'italian', ragusa: 'italian', knights: 'fortress', player: 'fortress', none: 'empty', cossack: 'empty', england: 'french', gujarat: 'islamic', mughal: 'islamic', calicut: 'islamic', swahili: 'islamic' })[f] || 'italian';
+    venice: 'italian', genoa: 'italian', ragusa: 'italian', knights: 'fortress', player: 'fortress', none: 'empty', cossack: 'empty', interlopers: 'empty', england: 'french', gujarat: 'islamic', mughal: 'islamic', calicut: 'islamic', swahili: 'islamic' })[f] || 'italian';
 }
 // Paint the harbour scene for a port. Deterministic per port; light follows the hour.
 function paintHarbour(cv, p) {
@@ -3554,6 +3625,11 @@ function paintHarbour(cv, p) {
     g.fillRect(lx - 16, baseY - 40, 44, 40); for (let k = 0; k < 6; k++) g.fillRect(lx - 16 + k * 8, baseY - 45, 4, 5);
     g.fillRect(lx + 4, baseY - 58, 14, 18); for (let k = 0; k < 3; k++) g.fillRect(lx + 4 + k * 5, baseY - 62, 3, 4);
   }
+  if (p.haven) { // pines, a few palm-thatched huts and a careening fire on the beach
+    for (let i = 0; i < 26; i++) { const x = W * 0.08 + rnd() * W * 0.8, h = 18 + rnd() * 26; g.fillStyle = night ? '#132019' : '#2f4a33'; g.fillRect(x - 1, baseY - h * 0.35, 2, h * 0.35); g.beginPath(); g.moveTo(x - h * 0.22, baseY - h * 0.3); g.lineTo(x, baseY - h); g.lineTo(x + h * 0.22, baseY - h * 0.3); g.fill(); }
+    for (let i = 0; i < 5; i++) { const x = W * 0.3 + rnd() * W * 0.35; g.fillStyle = night ? '#3a3226' : '#a08452'; g.fillRect(x, baseY - 7, 12, 7); g.fillStyle = night ? '#2a2419' : '#7a6235'; g.beginPath(); g.moveTo(x - 2, baseY - 7); g.lineTo(x + 6, baseY - 14); g.lineTo(x + 14, baseY - 7); g.fill(); }
+    g.fillStyle = 'rgba(240,150,60,0.85)'; g.beginPath(); g.arc(W * 0.56, baseY - 3, 3, 0, TAU); g.fill();
+  }
   if (style !== 'empty') drawFlagOn(g, p.f, style === 'islamic' ? lx + 24 : lx + 6, baseY - (style === 'islamic' ? 68 : style === 'french' ? 80 : 74), 18);
   // sea
   const sea = g.createLinearGradient(0, baseY, 0, H);
@@ -3563,7 +3639,7 @@ function paintHarbour(cv, p) {
   for (let i = 0; i < 30; i++) { const x = rnd() * W, y = baseY + 4 + rnd() * (H - baseY - 6); g.beginPath(); g.moveTo(x, y); g.lineTo(x + 6 + rnd() * 12, y); g.stroke(); }
   // mole and moored ships
   if (style !== 'empty') { g.fillStyle = night ? '#3a3a3a' : '#9b8e76'; g.fillRect(W * 0.62, baseY - 2, W * 0.3, 5); }
-  const boats = style === 'empty' ? 0 : 2 + p.yard;
+  const boats = p.haven ? 4 : style === 'empty' ? 0 : 2 + p.yard;
   for (let i = 0; i < boats; i++) {
     const x = W * (0.5 + rnd() * 0.32), y = baseY + 10 + rnd() * (H - baseY - 18), s = 0.7 + rnd() * 0.5;
     g.fillStyle = '#3d2a17'; g.beginPath(); g.moveTo(x - 16 * s, y); g.lineTo(x + 16 * s, y); g.lineTo(x + 12 * s, y + 5 * s); g.lineTo(x - 12 * s, y + 5 * s); g.fill();
@@ -3612,6 +3688,7 @@ function marketGoodsHTML(p) {
 
 // ================= RELIEF: shaded mountains and sea depth, rendered once at load =================
 const RIDGES = [ // [amplitude, width in nm, [[lon,lat]...]]
+  [0.3, 16, [[-4.0,50.6],[-3.8,50.55]]], [0.25, 18, [[-4.2,48.4],[-3.3,48.35],[-2.6,48.3]]], [0.35, 22, [[-3.8,51.85],[-3.2,51.9]]],
   [1.0, 40, [[5.8,44.1],[6.9,45.0],[7.6,45.9],[9.0,46.4],[10.5,46.6],[12.0,46.8],[13.5,46.6],[14.8,46.6]]],
   [0.55, 22, [[8.5,44.3],[10.0,44.3],[11.5,43.8],[12.8,43.0],[13.6,42.4],[14.5,41.6],[15.5,40.6],[16.0,39.8],[16.2,39.0]]],
   [0.8, 25, [[-1.5,43.0],[0.5,42.7],[2.0,42.5],[3.0,42.45]]],
@@ -3678,6 +3755,8 @@ function biomeIndian(lo, la, dc, n) {
   else c = mixc(BIO.sand, BIO.rock, 0.3 + 0.4 * n);                                       // Arabia and Somalia
   const v = 0.92 + 0.16 * n; return [c[0] * v, c[1] * v, c[2] * v];
 }
+const BIO_TAP0 = [[0, 0]];
+const BIO_TAPS = [[0, 0], [0.7, 0.2], [-0.7, -0.2], [0.2, -0.6], [-0.2, 0.6]];
 function biomeRGB(lo, la, dc, n) {
   const ss = (a, b, x) => smooth01((x - a) / (b - a));
   let c;
@@ -3770,8 +3849,8 @@ function buildRelief(th = 'med') {
     // value noise for texture
     const P = new Float32Array(4096); for (let i = 0; i < 4096; i++) P[i] = hash('n' + i);
     // the open-ocean charts are drawn at a smaller scale, so they get a well-mixed hash (no diagonal banding) and broader hills
-    const mix = th === 'med' ? (x, y) => (x * 73 + y * 151) & 4095 : (x, y) => { let k = Math.imul(x, 374761393) ^ Math.imul(y, 668265263); k = Math.imul(k ^ (k >>> 13), 1274126177); return (k ^ (k >>> 16)) & 4095; };
-    const NS = th === 'med' ? 1 : 2.2;
+    const mix = (x, y) => { let k = Math.imul(x, 374761393) ^ Math.imul(y, 668265263); k = Math.imul(k ^ (k >>> 13), 1274126177); return (k ^ (k >>> 16)) & 4095; };
+    const NS = th === 'med' ? 1.4 : 2.2;
     const vnoise = (x, y) => {
       x /= NS; y /= NS;
       const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
@@ -3811,7 +3890,9 @@ function buildRelief(th = 'med') {
         const hy = (H[Math.min(h - 1, y + 1) * w + x] - H[Math.max(0, y - 1) * w + x]) / (2 * R) * E * 60;
         const len = Math.hypot(hx, hy, 1), dot = (-hx * L[0] - hy * L[1] + L[2]) / len;
         const shade = 0.62 + 0.72 * Math.max(0, dot);
-        const [lo, la] = unproj(x * R + TT.ox, y * R + TT.oy), bio = (th === 'carib' ? biomeCarib : th === 'indian' ? biomeIndian : biomeRGB)(lo, la, dl[i] * R, vnoise(x * R / 40, y * R / 40));
+        const [lo, la] = unproj(x * R + TT.ox, y * R + TT.oy), bfn = th === 'carib' ? biomeCarib : th === 'indian' ? biomeIndian : biomeRGB, bn = vnoise(x * R / 40, y * R / 40), bio = [0, 0, 0];
+        const taps = th === 'med' && lo > 28.5 && lo < 34.5 && la < 32.5 ? BIO_TAP0 : BIO_TAPS; // keep the Nile ribbon sharp
+        for (const [ox, oy] of taps) { const c = bfn(lo + ox, la + oy, dl[i] * R, bn); bio[0] += c[0] / taps.length; bio[1] += c[1] / taps.length; bio[2] += c[2] / taps.length; } // blur the biome borders so no straight edges show
         const hc = tint(H[i]), k = smooth01((H[i] - 0.35) / 0.55); // lowlands take the biome colour, heights the rock and snow
         const r = bio[0] * (1 - k) + hc[0] * k, g = bio[1] * (1 - k) + hc[1] * k, b = bio[2] * (1 - k) + hc[2] * k;
         L_[o] = Math.min(255, r * shade); L_[o + 1] = Math.min(255, g * shade); L_[o + 2] = Math.min(255, b * shade); L_[o + 3] = 255;
@@ -4248,7 +4329,7 @@ let portTab = 'market';
 const TAB_NAMES = { market: 'Market', yard: 'Shipyard', tavern: 'Tavern', harbour: 'Harbour master', bank: 'Bank', fleet: 'Fleet', holdings: 'Holdings' };
 function portTabsFor(p) {
   if (p.f === 'none') return ['holdings'];
-  if (p.f === 'player') return ['market', 'tavern', 'bank', 'fleet', 'holdings'];
+  if (p.f === 'player') return p.haven ? ['market', 'yard', 'tavern', 'harbour', 'bank', 'fleet', 'holdings'] : ['market', 'tavern', 'bank', 'fleet', 'holdings'];
   const t = ['market', 'yard', 'tavern', 'harbour', 'bank'];
   if (S.fleet.length) t.push('fleet');
   if (S.posts[p.id] || p.yard < 2) t.push('holdings');
@@ -4257,7 +4338,7 @@ function portTabsFor(p) {
 function renderPort() {
   const p = portById(S.docked); if (!p) return;
   const f = FACTIONS[p.f];
-  $('#portHead').innerHTML = `<canvas class="harbour" aria-hidden="true"></canvas><span class="flag lg" style="${flagCss(p.f)}"></span><div><h2>${esc(p.name)}</h2><p>${p.f === 'none' ? 'Unclaimed anchorage' : p.f === 'player' ? 'Your own harbour' : `Held by the ${f.name}${p.f !== p.f0 ? ` (taken from the ${FACTIONS[p.f0].adj})` : ''} · ${f.ruler}`}${p.id === 'birgu' && siegeActive() ? ' · <em class="bad">besieged</em>' : ''}</p>
+  $('#portHead').innerHTML = `<canvas class="harbour" aria-hidden="true"></canvas><span class="flag lg" style="${flagCss(p.f)}"></span><div><h2>${esc(p.name)}</h2><p>${p.haven && p.f !== 'player' ? 'Interlopers\u2019 anchorage · no crown\u2019s law' : p.f === 'none' ? 'Unclaimed anchorage' : p.f === 'player' ? 'Your own harbour' : `Held by the ${f.name}${p.f !== p.f0 ? ` (taken from the ${FACTIONS[p.f0].adj})` : ''} · ${f.ruler}`}${p.id === 'birgu' && siegeActive() ? ' · <em class="bad">besieged</em>' : ''}</p>
     <p class="regline"><i class="risk r${regionRisk(p.region)}"></i>${REGIONS.find(r => r.id === p.region).name}: ${RISK_NAMES[regionRisk(p.region)].toLowerCase()}${S.bounty[p.f] ? ` · <em class="bad">wanted here, ${fmt(S.bounty[p.f])} d</em>` : ''}</p>${AUDIO.musicOn && AUDIO.ctx ? `<p class="tune">Music: ${esc(themeName(p.f))}</p>` : ''}</div>
     <div class="purse"><small>Purse</small><b>${fmt(S.gold)}</b><small>ducats</small></div>`;
   { const hc = $('#portHead canvas.harbour'); if (hc) requestAnimationFrame(() => paintHarbour(hc, p)); }
@@ -4409,6 +4490,10 @@ const VOYAGES = [
     blurb: 'Across the Ocean Sea with the trade wind behind you, by the Canaries and Dominica to the Indies of Castile.' },
   { id: 'tornaviaje', name: 'Return to Castile', from: ['havana', 'sdomingo'], to: 'med', dests: ['cadiz', 'seville', 'lisbon'], days: [58, 72],
     blurb: 'Up the Bahama channel with the Gulf Stream, north to the westerlies and home by the Azores.' },
+  { id: 'interlope', name: 'Interlopers\u2019 run to the Indies', from: ['larochelle'], to: 'carib', dests: ['pinos', 'sdomingo', 'cartagena_i'], days: [44, 58],
+    blurb: 'French and English smugglers slip out of La Rochelle for the Indies without asking Seville. The hidden anchorage at Isla de Pinos takes anyone.' },
+  { id: 'interhome', name: 'Home with the interlopers', from: ['pinos'], to: 'med', dests: ['larochelle', 'lisbon'], days: [58, 72],
+    blurb: 'North through the Florida channel in company with smugglers who never touch a Spanish quay.' },
   { id: 'cape', name: 'Carreira da Índia', from: ['lisbon'], to: 'indian', dests: ['goa', 'cochin', 'mombasa'], days: [150, 180], scurvy: true, season: [2, 3],
     blurb: 'South round the Cape of Good Hope to the Estado da Índia. Six months at sea; leave in March or April to catch the monsoon.' },
   { id: 'capeback', name: 'Home by the Cape', from: ['goa', 'cochin'], to: 'med', dests: ['lisbon'], days: [160, 190], scurvy: true, season: [11, 0],
@@ -4422,11 +4507,12 @@ const CAMEL_LOAD = 60;
 const voyagesFrom = p => VOYAGES.filter(v => v.from.includes(p.id));
 const oceanDays = (v, dest) => {
   let [a, b] = v.days; if (v.id === 'carrera' && dest !== 'sdomingo') { a += 8; b += 8; }
+  if (!v.overland && hasLt('cosmo')) { a = Math.round(a * 0.8); b = Math.round(b * 0.8); }
   return [a, b];
 };
 const offSeason = v => v.season && !v.season.includes(curDate().getUTCMonth());
 function voyageCheck(v, dest) {
-  const def = shipDef(), [a, b] = oceanDays(v, dest), late = offSeason(v) ? 40 : 0;
+  const def = shipDef(), [a, b] = oceanDays(v, dest), late = offSeason(v) && !hasLt('cosmo') ? 40 : 0;
   const need = Math.ceil(S.crew / 10 * (b + late));
   const fee = v.overland ? 60 + cargoUsed() * 3 : 0;
   if (!v.overland && def.oars >= 0.5) return { why: `A ${def.name.toLowerCase()} cannot cross an ocean. You need a sailing ship.`, need, fee, late };
@@ -4441,7 +4527,7 @@ function voyagesHTML(p) {
   let html = `<h4 class="sect">Long voyages <small>To another chart</small></h4>`;
   for (const v of vs) {
     const chk = voyageCheck(v, v.dests[0]);
-    html += `<div class="card voyage"><div class="cardhead"><div><h3>${esc(v.name)}</h3><small>${esc(v.blurb)}${chk.late ? ' You have missed the season: count on about 40 more days.' : ''}</small>
+    html += `<div class="card voyage"><div class="cardhead"><div><h3>${esc(v.name)}</h3><small>${esc(v.blurb)}${offSeason(v) ? chk.late ? ' You have missed the season: count on about 40 more days.' : ' Out of season, but your piloto-mor knows the way.' : ''}</small>
       <small class="mute">${v.overland ? `Caravan fee ${fmt(chk.fee)} d.` : `Provisions needed ${chk.need}, you have ${Math.floor(S.provisions)}.`}${chk.why ? ' ' + esc(chk.why) : ''}</small></div></div>
       <div class="voyrow">${v.dests.map(d => { const q = portById(d), [a, b] = oceanDays(v, d); return `<button class="btn ${chk.why ? '' : 'primary'}" data-act="voy:${v.id}:${d}" ${chk.why ? 'disabled' : ''}>${esc(q.name)} · ${a + chk.late}–${b + chk.late} days</button>`; }).join('')}</div></div>`;
   }
@@ -4504,6 +4590,15 @@ function startVoyage(vid, dest) {
   save(); updateHUD();
 }
 
+// small bounties can be settled from any friendly port, through a notary, at a higher price
+const NOTARY_MAX = 500;
+const notaryFine = b => Math.round(b * 1.5 + 20);
+function notaryHTML(p) {
+  const list = Object.entries(S.bounty).filter(([f, b]) => b > 0 && b < NOTARY_MAX && f !== p.f && FACTIONS[f]);
+  if (!list.length) return '';
+  return `<h4 class="sect">Settle by letter <small>Bounties under ${NOTARY_MAX} ducats</small></h4><div class="card"><small>A notary sends your fine to the magistrates by letter of exchange, so you need not show your face in their harbour. It costs half as much again as paying in person, and earns you no goodwill.</small>
+    ${list.map(([f, b]) => { const fine = notaryFine(b); return `<div class="cardhead notary"><div><b>${esc(FACTIONS[f].name)}</b><small>${fmt(Math.round(b))} ducats on your head</small></div><button class="btn" data-act="notary:${f}" ${S.gold >= fine ? '' : 'disabled'}>Pay ${fmt(fine)} d</button></div>`; }).join('')}</div>`;
+}
 function harbourHTML(p) {
   const offers = offersFor(p);
   let html = '';
@@ -4557,7 +4652,9 @@ function harbourHTML(p) {
     }
     html += `</div>`;
   }
+  html += notaryHTML(p);
   html += voyagesHTML(p);
+  if (p.haven) return html + `<h4 class="sect">The anchorage</h4><div class="card"><p class="mute">${p.f === 'player' ? 'Your flag flies over the anchorage now, but the trade goes on as before.' : 'No flag flies here and no harbour master asks your name.'} Smugglers, Huguenot rovers and runaway sailors trade under the pines: they buy the European goods the Spanish colonies are short of and sell hides, logwood and pearls. Anyone may water, victual and careen here, whoever is hunting them.</p></div>`;
   // letter of marque
   html += `<h4 class="sect">Letter of marque</h4><div class="card">`;
   if (fn.outlaw || f === 'ragusa') html += `<p class="mute">${f === 'ragusa' ? 'Ragusa issues no letters of marque. Its only weapon is its neutrality.' : 'No one here signs letters.'}</p>`;
@@ -4776,6 +4873,7 @@ document.addEventListener('click', e => {
   else if (act === 'postup') { const po = S.posts[S.docked], c = (po.kind === 'harbour' ? 3000 : 2000) * po.level; if (po.level < 3 && S.gold >= c) { S.gold -= c; po.level++; } renderPort(); }
   else if (act === 'garrison') { const po = S.posts[S.docked], c = 300 * (po.garrison + 1); if (po.garrison < 3 && S.gold >= c) { S.gold -= c; po.garrison++; } renderPort(); }
   else if (act === 'tower') { const po = S.posts[S.docked], c = 2500 * (po.tower + 1); if (po.tower < 2 && S.gold >= c) { S.gold -= c; po.tower++; } renderPort(); }
+  else if (act.startsWith('notary:')) { const f = act.slice(7), b = S.bounty[f] || 0, fine = notaryFine(b); if (b > 0 && b < NOTARY_MAX && S.gold >= fine) { S.gold -= fine; delete S.bounty[f]; toast('Bounty settled by letter', `The ${FACTIONS[f].adj} magistrates receive ${fmt(fine)} ducats and strike your name from the list.`, 'gold'); } renderPort(); }
   else if (act === 'paybounty') { const f = portById(S.docked).f, fine = Math.round((S.bounty[f] || 0) * 1.2); if (S.gold >= fine) { S.gold -= fine; delete S.bounty[f]; addRep(f, 5); toast('Bounty settled', `The ${FACTIONS[f].adj} strike your name from the list.`, 'gold'); } renderPort(); }
   else if (act === 'marque') { const f = portById(S.docked).f, fee = 100 + S.level * 20; if (S.gold >= fee) { S.gold -= fee; S.marque = { f, day: dayIndex() }; toast(`${FACTIONS[f].adj} letter of marque`, `Lawful prey: ${licTargets(f)}.`, 'gold'); } renderPort(); }
   else if (act === 'revoke') { S.marque = null; toast('Letter returned', 'You sail as a private merchant again.'); renderPort(); }
