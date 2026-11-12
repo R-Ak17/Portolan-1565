@@ -278,9 +278,41 @@ button:focus-visible, input:focus-visible, label.origin:focus-within { outline: 
 #tips .btn { justify-self: start; }
 @media (max-width: 560px) { #mini { width: 140px; } .instr .region { font-size: 11px; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* the living sea */
+#m-event { width: min(560px, calc(100% - 32px)); }
+.evtext p { margin: 0 0 8px; font-family: var(--font-display); font-size: 18px; line-height: 1.4; color: var(--paper); text-wrap: pretty; }
+.evchoices { display: grid; gap: 8px; }
+.evch { display: grid; gap: 2px; justify-content: stretch; justify-items: start; text-align: left; padding: 10px 14px; height: auto; white-space: normal; width: 100%; }
+.evch b { font-weight: 600; } .evch small { color: var(--mute); font-size: 12px; font-weight: 400; }
+.evres { border-left: 2px solid var(--gilt); padding: 2px 0 2px 12px; display: grid; gap: 8px; }
+.evres p { margin: 0; color: var(--paper); font-size: 15px; line-height: 1.45; }
+.fxchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fxchip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.fxchip i { font-style: normal; color: var(--mute); } .fxchip.up b { color: var(--good, #8fc98a); } .fxchip.down b { color: var(--bad); }
+.deeds { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; }
+.deed { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; display: grid; gap: 1px; opacity: .55; }
+.deed b { font-family: var(--font-display); font-weight: 400; font-size: 16px; } .deed small { color: var(--mute); font-size: 12px; } .deed em { font-style: normal; font-size: 12px; color: var(--mute); font-variant-numeric: tabular-nums; }
+.deed.done { opacity: 1; border-color: var(--gilt); background: var(--panel-2); } .deed.done b { color: var(--gilt); } .deed.done em::before { content: "\2713  "; color: var(--gilt); }
+/* on deck */
+#deck { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; background: #0c1a24; }
+#deck:active { cursor: grabbing; }
+body.deck #seaWrap { visibility: hidden; } body.deck #tiltBtn { display: none; }
+#deckBar { position: fixed; z-index: 6; top: calc(12px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+#deckBar .btn { background: var(--panel-solid); }
+.steer { display: none; position: fixed; z-index: 6; top: 50%; transform: translateY(-50%); width: 56px; height: 72px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--paper); font-size: 22px; cursor: pointer; touch-action: none; user-select: none; }
+.steer.l { left: max(12px, env(safe-area-inset-left, 0px)); } .steer.r { right: max(12px, env(safe-area-inset-right, 0px)); }
+body.deck .steer { display: block; } .steer:active { background: var(--gilt); color: var(--ink); }
 </style>
 
 <div id="seaWrap"><canvas id="sea" aria-label="Chart of the Mediterranean. Click to steer."></canvas></div>
+<canvas id="deck" hidden aria-label="Your ship at sea, seen from the deck"></canvas>
+<div id="deckBar" hidden>
+  <button class="btn sm" data-act="deckcam">Helm view</button>
+  <button class="btn sm" data-act="deckexit">Back to the chart</button>
+</div>
+<button class="steer l" data-steer="left" aria-label="Turn to port">◀</button>
+<button class="steer r" data-steer="right" aria-label="Turn to starboard">▶</button>
 
 <div id="hud">
   <div class="top">
@@ -324,6 +356,7 @@ button:focus-visible, input:focus-visible, label.origin:focus-within { outline: 
         <button class="iconbtn" data-act="zin" aria-label="Zoom in">+</button>
         <button class="iconbtn textbtn" id="sndBtn" data-act="sound" aria-pressed="true" title="Sound and music">Sound</button>
         <button class="iconbtn textbtn" id="tiltBtn" data-act="tilt" aria-pressed="true" title="3D view (V)">3D</button>
+        <button class="iconbtn textbtn" id="deckBtn" data-act="deck" aria-pressed="false" title="On deck: sail her yourself (G)">Deck</button>
         <button class="iconbtn" id="fastBtn" data-act="fast" aria-pressed="false" aria-label="Fast time" title="Fast time (F)">»</button>
         <button class="iconbtn textbtn" data-act="chart" title="Plot a course (C)">Chart</button>
         <button class="iconbtn textbtn" id="capBtn" data-act="captain">Captain</button>
@@ -368,6 +401,11 @@ button:focus-visible, input:focus-visible, label.origin:focus-within { outline: 
 <section class="modal" id="m-captain" hidden aria-label="Captain's log">
   <header><div class="ttl"><h2>Captain’s log</h2><p>Skills, standing and contracts</p></div><button class="btn ghost sm closex" data-close>Close</button></header>
   <div class="body" id="capBody"></div>
+</section>
+
+<section class="modal" id="m-event" hidden aria-label="At sea">
+  <header><div class="ttl"><h2 id="evTitle"></h2><p id="evSub"></p></div></header>
+  <div class="body" id="evBody"></div>
 </section>
 
 <section class="modal" id="m-course" hidden aria-label="Chart">
@@ -1287,6 +1325,7 @@ function migrate() {
   S.owners ??= {}; S.rulers ??= {}; S.bounty ??= {}; S.marque ??= null; S.lts ??= []; S.events ??= [];
   S.wars ??= WARS.map(x => x.slice()); S.allies ??= ALLIES.map(x => x.slice());
   S.theatre ??= 'med'; S.stash ??= null;
+  S.wx ??= []; S.rivals ??= {}; S.deeds ??= {}; S.stats ??= {}; S.treasure ??= null; S.race ??= null; S.passengers ??= null; S.stats[S.theatre] = 1;
   HISTORY.forEach((h, i) => { if (S.flags['h' + i]) { S.flags[h.id] = 1; delete S.flags['h' + i]; } }); // history ids used to be positional
   if (!S.flags.thMap) {
     S.flags.thMap = 1;
@@ -1535,7 +1574,7 @@ function npcSpeed(n) {
   const def = SHIPS[n.type];
   const k = def.speed * ((1 - def.oars) * (0.5 + 0.5 * polar(relWind(n.heading), def.rig)) + def.oars);
   if (n.convoy) return 5.2;
-  return k * (n.chase ? 0.95 : 0.7) * (def.oars && inOcean(n.x, n.y) ? 1 - def.oars * 0.5 : 1);
+  return k * (n.chase || n.racing ? 0.95 : 0.7) * (def.oars && inOcean(n.x, n.y) ? 1 - def.oars * 0.5 : 1);
 }
 function updateNpcs(dtH) {
   for (let i = S.npcs.length - 1; i >= 0; i--) {
@@ -1557,6 +1596,7 @@ function updateNpcs(dtH) {
       if (n.kind === 'cossack') { if (n.roam-- > 0) { n.pts = roamLeg(n); continue; } S.npcs.splice(i, 1); continue; }
       if (n.kind === 'rogue') { if (n.roam-- > 0) { n.pts = roamLeg(n); continue; } S.npcs.splice(i, 1); continue; }
       if (n.kind === 'corsair' && n.roam > 0) { n.roam--; n.pts = n.roam > 0 ? roamLeg(n) : (nodePath(nearestNode(n.x, n.y), portById(n.home).node) || []); continue; }
+      if (n.kind === 'rival') { if (n.racing || rivalNextLeg(n)) continue; }
       S.npcs.splice(i, 1); continue; // arrived in port
     }
     const dx = tx - n.x, dy = ty - n.y, d = Math.hypot(dx, dy);
@@ -1576,26 +1616,31 @@ function updateNpcs(dtH) {
   if (ROGUES_ENABLED && S.npcs.filter(n => n.kind === 'rogue').length < rogueWant && Math.random() < 0.01) spawnNpc('rogue');
   if (curTh() === 'med' && siegeActive() && S.npcs.filter(n => n.kind === 'siege').length < 4 && Math.random() < 0.02) spawnNpc('siege');
 }
-const sightRange = () => 75 + S.skills.nav * 4;
+const sightRange = () => (75 + S.skills.nav * 4) * (inFog() ? 0.3 : 1) * (1 - 0.3 * nightK());
 function npcVisible(n) {
   const d = Math.hypot(n.x - S.x, n.y - S.y);
+  if (d > 30 && wxAt(n.x, n.y, 'fog')) return false;
   if (d <= sightRange()) return true;
+  if (S.spotUntil > S.t && d <= 320 && (n.kind === 'corsair' || n.kind === 'patrol' || n.kind === 'hunter' || n.kind === 'cossack' || n.kind === 'rogue')) return true;
   return hasLt('renegade') && (n.kind === 'corsair' || n.kind === 'rogue') && d <= 250;
 }
-const huntsYou = n => !(n.kind === 'cossack' && hasLt('nogai')) && (isHostile(n.f) || (n.f === 'portugal' && n.kind === 'patrol' && curTh() === 'indian' && !hasCartaz()) || (n.kind === 'hunter' && (S.bounty[n.f] || 0) >= 150) || (n.kind === 'escort' && !!S.flags['angry_' + n.convoy]));
+const huntsYou = n => !(n.kind === 'cossack' && hasLt('nogai')) && (isHostile(n.f) || (n.f === 'portugal' && n.kind === 'patrol' && curTh() === 'indian' && !hasCartaz()) || (n.kind === 'hunter' && (S.bounty[n.f] || 0) >= 150) || (n.kind === 'escort' && !!S.flags['angry_' + n.convoy]) || (n.kind === 'rival' && rivalSt(n.rid).rel <= -40));
 function npcAI() {
   if (S.docked || B) return;
   nearShip = null; let nd = 28;
-  const safe = inSafeZone(S.x, S.y) || inGrace();
+  const safe = inSafeZone(S.x, S.y) || inGrace(), fog = inFog();
   for (const n of S.npcs) {
     const d = Math.hypot(n.x - S.x, n.y - S.y);
     if (d < nd) { nd = d; nearShip = n; }
-    const aggressive = n.kind === 'corsair' || n.kind === 'patrol' || n.kind === 'siege' || n.kind === 'rogue' || n.kind === 'hunter' || n.kind === 'cossack' || n.kind === 'escort';
-    if (aggressive && huntsYou(n) && n.cooldown <= 0 && d < (n.kind === 'hunter' ? 160 : 120) && !safe) {
-      let pr = n.kind === 'corsair' || n.kind === 'cossack' ? 0.55 : n.kind === 'rogue' || n.kind === 'hunter' ? 0.8 : 0.35;
+    const aggressive = n.kind === 'corsair' || n.kind === 'patrol' || n.kind === 'siege' || n.kind === 'rogue' || n.kind === 'hunter' || n.kind === 'cossack' || n.kind === 'escort' || n.kind === 'rival';
+    if (aggressive && huntsYou(n) && n.cooldown <= 0 && d < (n.kind === 'hunter' ? 160 : 120) && !safe && (!fog || d < 30)) {
+      let pr = n.kind === 'rival' ? 0.6 : n.kind === 'corsair' || n.kind === 'cossack' ? 0.55 : n.kind === 'rogue' || n.kind === 'hunter' ? 0.8 : 0.35;
       if (n.kind === 'corsair' && hasLt('interp')) pr *= 0.5;
       if (!n.chase) n.chase = Math.random() < pr && segClear(n.x, n.y, S.x, S.y, 1.5);
       if (n.chase && d < 9) { startBattle(n, false); return; }
+    } else if (n.chase && fog && d >= 30) { // the fog swallows you
+      n.chase = false; n.cooldown = 8; S.stats.fogEscapes = (S.stats.fogEscapes || 0) + 1;
+      toast('They have lost you', 'Your pursuer gropes about in the fog and gives up the chase.');
     } else if (n.chase && (safe || d > 160 || !huntsYou(n))) { n.chase = false; if (safe) n.cooldown = 6; }
     if (n.chase && n.cooldown > 0) n.chase = false;
   }
@@ -1623,11 +1668,12 @@ function update(dtReal) {
   w.str += (w.tstr - w.str) * Math.min(1, dtH * 0.08);
   updatePlayer(dtReal, dtH);
   updateNpcs(dtH);
+  updateWeather(dtH); tickRivals(); tickRace(); checkTreasure();
   while (dayIndex() > S.lastDay) { S.lastDay++; dailyTick(); }
 }
 function updatePlayer(dtReal, dtH) {
   const def = shipDef();
-  const turn = (def.rig === 'square' && !hasLt('cornish') ? 0.9 : 1.4) * (0.7 + 0.3 * crewFactor()) * (hasLt('master') ? 1.33 : 1) * dtReal * Math.min(timeScale, 2);
+  const turn = (def.rig === 'square' && !hasLt('cornish') ? 0.9 : 1.4) * (0.7 + 0.3 * crewFactor()) * (hasLt('master') ? 1.33 : 1) * dtReal * (DECK.on ? 0.55 : Math.min(timeScale, 2));
   let steer = 0;
   if (keys.left) steer -= 1;
   if (keys.right) steer += 1;
@@ -1731,7 +1777,7 @@ function dailyTick() {
   const inBS = inBlackSea(S.x, S.y);
   const inOc = inOcean(S.x, S.y);
   const mo = curDate().getUTCMonth(), hurricane = curTh() === 'carib' && mo >= 7 && mo <= 9, monsoonPeak = curTh() === 'indian' && mo >= 5 && mo <= 7 && !hasLt('mappila');
-  if (!S.docked && Math.random() < (inBS ? 0.09 : inOc ? 0.05 : hurricane ? 0.1 : monsoonPeak ? 0.09 : 0.035) && !(inBS && hasLt('laz'))) {
+  if (!S.docked && Math.random() < (inBS ? 0.09 : inOc ? 0.05 : hurricane ? 0.1 : monsoonPeak ? 0.09 : 0.035) * 0.35 && !(inBS && hasLt('laz'))) {
     const dmg = Math.round(rand(4, 16) * def.hull / 80 * (1 - 0.06 * S.skills.nav) * (hasLt('pilot') ? 0.5 : 1) * (inOc && def.oars > 0.5 ? 1.6 : 1) * (hurricane ? 2.2 : monsoonPeak ? 1.4 : 1));
     S.ship.hull = Math.max(1, S.ship.hull - dmg);
     let msg = hurricane ? `A hurricane! The sky turns green and the sea comes aboard. Hull damage ${dmg}.` : monsoonPeak ? `Monsoon squalls batter the ship. Hull damage ${dmg}.` : inOc && def.oars > 0.5 ? `Atlantic seas break over your low galley. Hull damage ${dmg}.` : inBS ? `A Black Sea storm blows up out of nowhere. Hull damage ${dmg}.` : `A ${pick(['mistral', 'bora', 'sirocco gale', 'squall line'])} strikes. Hull damage ${dmg}.`;
@@ -1782,7 +1828,9 @@ function dailyTick() {
   S.events = S.events.filter(e => dayIndex() - (e.until || e.start) < 120);
   tickMarkets();
   siegeNews();
+  rivalNews(); checkDeeds();
   save();
+  rollEncounter();
 }
 function siegeNews() {
   const d = dayIndex();
@@ -1807,7 +1855,8 @@ function startBattle(npc, playerInit, camp) {
   if (playerInit) {
     if (inSafeZone(S.x, S.y)) { toast('Under the harbour guns', 'No captain fights inside a friendly harbour\u2019s waters. Move further out.', 'bad'); return; }
     S.route = null; S.target = null;
-    if (!lawfulTarget(npc.f)) {
+    if (npc.duel) { /* a duel between captains breaks no law */ }
+    else if (!lawfulTarget(npc.f)) {
       piracy = true;
       addRep(npc.f, -25);
       for (const f of NATIONS) { if (f === npc.f) continue; if (allied(f, npc.f)) addRep(f, -10); else if (atWar(f, npc.f)) addRep(f, 6); }
@@ -1911,6 +1960,7 @@ function battleAct(act) {
 function endBattle(result) {
   const n = B.npc, nd = SHIPS[n.type], pd = shipDef();
   B.over = true; B.result = result; B.loot = [];
+  const duel = !!n.duel; if (n.kind === 'rival') rivalAfterBattle(n, result);
   if (hasLt('surgeon') && S.crew < B.crewStart) {
     const saved = Math.min(Math.floor((B.crewStart - S.crew) / 3), pd.crewMax - S.crew);
     if (saved > 0) { S.crew += saved; B.loot.push(`${specById('surgeon').name} saves ${saved} of the wounded`); }
@@ -1938,8 +1988,7 @@ function endBattle(result) {
     if (n.kind === 'hunter') { addBounty(n.f, 120); B.loot.push(`The ${FACTIONS[n.f].adj} raise the price on your head`); }
     gainXP(30 + nd.guns * 5 + B.crew0 / 2);
     S.kills++; S.morale = clamp(S.morale + 12, 0, 100);
-    addRep(n.f, -8);
-    for (const f of NATIONS) if (atWar(f, n.f)) addRep(f, 5);
+    if (!duel) { addRep(n.f, -8); for (const f of NATIONS) if (atWar(f, n.f)) addRep(f, 5); }
     for (const c of S.contracts) if (c.type === 'bounty' && c.target === n.f && !c.done) {
       c.got++; if (c.got >= c.count) { c.done = true; S.gold += c.reward; addRep(c.f, 8); gainXP(c.reward / 4); B.loot.push(`Bounty paid: ${fmt(c.reward)} ducats (${c.title})`); }
     }
@@ -2255,6 +2304,9 @@ function dock(p) {
   S.docked = p.id; S.sail = 0; S.speed = 0; S.route = null; S.target = null; S.x = p.wx; S.y = p.wy;
   S.discovered[p.id] = true;
   deliverContracts(p);
+  if (S.passengers) { S.gold += S.passengers.pay; toast('Passengers ashore', `They pay ${fmt(S.passengers.pay)} ducats for the passage and bless your ship.`, 'gold'); S.passengers = null; }
+  if (p.id === 'cairo') S.stats.cairo = 1; if (p.bs) S.stats.bs = 1; if (p.id === 'plymouth' || p.id === 'southampton') S.stats.eng = 1;
+  checkDeeds();
   S.morale = clamp(S.morale + 4, 0, 100);
   if (S.pool[p.id] == null || S.pool[p.id].day !== dayIndex()) S.pool[p.id] = { day: dayIndex(), n: randi(4, 10 + (p.yard * 8)) };
   portTab = 'market'; marketFilter = 'best'; openModal('port'); renderPort(); save();
@@ -2664,6 +2716,105 @@ function rangeFR(r) { return FR_RANGE[r.toLowerCase()] || T(r); }
 
 // ---- the dictionary: [English, French or function(captures)] ----
 const FR_ENTRIES = [
+  // ---- the living sea ----
+  ...Object.entries(FR_FACTION).map(([k, v]) => [k, v[0]]),
+  ['Squall', 'Grain'], ['Hurricane', 'Ouragan'], ['Rain and a screaming wind. Furl your sails to spare the hull, or carry on and take the damage.', 'La pluie et un vent hurlant. Carguez vos voiles pour épargner la coque, ou continuez et encaissez les dégâts.'],
+  ['The sea turns white. Furl everything and pray: full sail will tear the ship apart.', 'La mer blanchit. Carguez tout et priez : sous toute la toile, le navire se disloquera.'],
+  ['Through the squall', 'Le grain est passé'], ['The sky clears.', 'Le ciel se dégage.'], ['Hull {}/{}.', c => `Coque ${c[0]}/${c[1]}.`],
+  ['Fog bank', 'Banc de brume'], ['You can see a cable’s length, no more. Nobody can see you either.', 'On y voit à une encablure, pas plus. Personne ne vous voit non plus.'],
+  ['They have lost you', 'Ils vous ont perdu'], ['Your pursuer gropes about in the fog and gives up the chase.', 'Votre poursuivant tâtonne dans la brume et abandonne la chasse.'],
+  ['Deck', 'Pont'], ['Going on deck', 'Montée sur le pont'], ['The deck view is being rigged. One moment.', 'On grée la vue du pont. Un instant.'], ['No deck view', 'Pas de vue du pont'],
+  ['The deck view needs an internet connection the first time, to fetch its 3D library.', 'La vue du pont a besoin d’une connexion la première fois, pour charger sa bibliothèque 3D.'], ['This device cannot draw the 3D deck view.', 'Cet appareil ne peut pas afficher la vue 3D du pont.'],
+  ['On deck', 'Sur le pont'], ['Time runs slowly here. Steer with A and D or the arrows on screen, W and S set the sails. Drag to look around.', 'Le temps s’écoule lentement ici. Barrez avec A et D ou les flèches à l’écran, W et S règlent les voiles. Faites glisser pour regarder autour de vous.'],
+  ['Helm view', 'Vue de la barre'], ['Chase view', 'Vue de poursuite'], ['Back to the chart', 'Retour à la carte'],
+  ['Sail on', 'Reprendre la route'], ['crew', 'équipage'], ['morale', 'moral'], ['provisions', 'vivres'], ['hull', 'coque'], ['experience', 'expérience'], ['standing', 'réputation'], ['Treasure', 'Trésor'],
+  ['{} × {}', c => `${T(c[0])} × ${c[1]}`],
+  ['Men on a raft', 'Des hommes sur un radeau'], ['The lookout sights a raft with half a dozen men waving a shirt. They have been adrift for days.', 'La vigie aperçoit un radeau où une demi-douzaine d’hommes agitent une chemise. Ils dérivent depuis des jours.'],
+  ['Take them aboard', 'Les prendre à bord'], ['More hands, more mouths', 'Plus de bras, plus de bouches'], ['They swear to serve you. One of them kisses the deck.', 'Ils jurent de vous servir. L’un d’eux embrasse le pont.'],
+  ['Give them water and a course for land', 'Leur donner de l’eau et un cap vers la terre'], ['They bless you and row for the coast.', 'Ils vous bénissent et rament vers la côte.'],
+  ['The crew watch the raft fall astern and say nothing.', 'L’équipage regarde le radeau s’éloigner dans le sillage sans rien dire.'],
+  ['A ship adrift', 'Un navire à la dérive'], ['A ship drifts with her sails in rags and nobody at the helm.', 'Un navire dérive, les voiles en lambeaux et personne à la barre.'],
+  ['Board her', 'Monter à bord'], ['She may be rich, or cursed', 'Elle est peut-être riche, ou maudite'],
+  ['Her crew are gone, but the strongbox and part of the cargo are still aboard.', 'L’équipage a disparu, mais le coffre et une partie de la cargaison sont encore à bord.'],
+  ['Below decks the crew lie dead of fever. Your boarders bring it back with them.', 'Dans l’entrepont, l’équipage gît, mort de fièvre. Vos hommes la rapportent avec eux.'],
+  ['She has been stripped to the ribs. Someone was here before you.', 'Elle a été dépouillée jusqu’aux membrures. Quelqu’un est passé avant vous.'],
+  ['Tow her in for salvage', 'La remorquer pour la récupérer'], ['Slow work, sure money', 'Travail lent, argent sûr'],
+  ['The hulk follows you like a sulking dog. A breaker buys her timbers at the next harbour.', 'L’épave vous suit comme un chien boudeur. Un démolisseur achète ses bois au port suivant.'],
+  ['Leave her', 'La laisser'], ['You give her a wide berth. Sailors do not like a ship with no one aboard.', 'Vous passez au large. Les marins n’aiment pas un navire sans personne à bord.'],
+  ['A signal for water', 'Un signal de détresse'], ['A becalmed merchantman signals that her water casks are foul. Her master offers anything for a few barrels.', 'Un marchand encalminé signale que son eau est corrompue. Son patron offre n’importe quoi pour quelques barils.'],
+  ['Give them water and biscuit', 'Leur donner de l’eau et du biscuit'], ['Costs 20 provisions', 'Coûte 20 vivres'], ['Her master will speak well of you in every port of his nation.', 'Son patron dira du bien de vous dans tous les ports de sa nation.'],
+  ['Sell it at a hard price', 'La vendre au prix fort'], ['He pays, and remembers your face.', 'Il paie, et retient votre visage.'], ['You have none to spare. That is what you tell yourself.', 'Vous n’en avez pas de trop. C’est ce que vous vous dites.'],
+  ['A bottle in the sea', 'Une bouteille à la mer'], ['A sealed bottle bobs alongside. Inside is a scrap of sailcloth with a reef drawn in charcoal, and a cross.', 'Une bouteille scellée danse le long du bord. Dedans, un morceau de toile où un récif est dessiné au charbon, avec une croix.'],
+  ['Keep the map', 'Garder la carte'], ['Your pilot knows that reef. The cross is marked on your chart: sail there to dig.', 'Votre pilote connaît ce récif. La croix est portée sur votre carte : allez-y pour creuser.'],
+  ['Nobody aboard can make sense of the drawing.', 'Personne à bord ne comprend ce dessin.'], ['Throw it back', 'La rejeter à la mer'], ['Some other fool can chase it.', 'Qu’un autre fou coure après.'],
+  ['Dolphins under the bow', 'Des dauphins sous l’étrave'], ['A school of dolphins runs with the ship, and beyond them the sea is boiling with birds.', 'Une troupe de dauphins accompagne le navire, et plus loin la mer bouillonne d’oiseaux.'],
+  ['Follow the birds', 'Suivre les oiseaux'], ['A shoal of tunny. The crew fish until their arms ache and the decks run silver.', 'Un banc de thons. L’équipage pêche à s’en rompre les bras et le pont ruisselle d’argent.'],
+  ['The birds scatter and the sea is empty. You have lost half a day.', 'Les oiseaux se dispersent et la mer est vide. Vous avez perdu une demi-journée.'], ['Hold your course', 'Garder le cap'], ['A good omen, the old hands say.', 'Bon présage, disent les anciens.'],
+  ['The fishing fleet', 'La flottille de pêche'], ['A dozen fishing boats work a bank, lanterns swinging. Their master rows across to see who you are.', 'Une douzaine de barques travaillent un banc, lanternes au vent. Leur patron vient à la rame voir qui vous êtes.'],
+  ['Buy their catch', 'Acheter leur pêche'], ['Fresh fish for a week, and salt cod for after.', 'Du poisson frais pour une semaine, et de la morue salée pour après.'], ['Ask what they have seen', 'Demander ce qu’ils ont vu'],
+  ['They draw the coast in spilt wine and show you where {} lies. It is marked on your chart.', c => `Ils dessinent la côte dans du vin renversé et vous montrent où se trouve ${c[0]}. C’est porté sur votre carte.`],
+  ['They tell you which sails passed and where the raiders wait. For two days your lookouts know where to look.', 'Ils vous disent quelles voiles sont passées et où guettent les pillards. Pendant deux jours, vos vigies savent où regarder.'],
+  ['Stranded travellers', 'Des voyageurs abandonnés'], ['A boat hails you: pilgrims and a merchant’s widow, abandoned by a captain who took their money. They will pay for passage to any harbour.', 'Une barque vous hèle : des pèlerins et la veuve d’un marchand, abandonnés par un capitaine qui a pris leur argent. Ils paieront leur passage jusqu’à n’importe quel port.'],
+  ['Paid when they step ashore', 'Payé quand ils débarquent'], ['They settle under an awning aft and pray for fair weather. They will pay at your next harbour.', 'Ils s’installent sous une tente à l’arrière et prient pour le beau temps. Ils paieront à votre prochaine escale.'],
+  ['Refuse', 'Refuser'], ['A ship of war is no place for pilgrims.', 'Un navire armé n’est pas un lieu pour des pèlerins.'],
+  ['Passengers ashore', 'Passagers à terre'], ['They pay {} ducats for the passage and bless your ship.', c => `Ils paient ${c[0]} ducats pour le passage et bénissent votre navire.`],
+  ['Wreckage', 'Des débris'], ['Spars, barrels and a hatch cover drift past. A ship went down here not long ago.', 'Des espars, des barils et un panneau d’écoutille dérivent. Un navire a sombré ici il y a peu.'],
+  ['Salvage what floats', 'Récupérer ce qui flotte'], ['The boats bring back what the sea has not spoiled.', 'Les canots rapportent ce que la mer n’a pas gâté.'], ['Search for survivors', 'Chercher des survivants'],
+  ['You pull men from a floating spar, half dead and wholly grateful.', 'Vous tirez des hommes d’un espar flottant, à moitié morts et tout à fait reconnaissants.'], ['No one. The crew are glad you looked.', 'Personne. L’équipage vous sait gré d’avoir cherché.'],
+  ['Knives on the foredeck', 'Des couteaux sur le gaillard'], ['Two watches come to blows over a game of dice. A knife is out.', 'Deux bordées en viennent aux mains pour une partie de dés. Un couteau est sorti.'],
+  ['Flog the ringleaders', 'Faire fouetter les meneurs'], ['Order returns, sullenly.', 'L’ordre revient, maussade.'], ['Issue wine and make them shake hands', 'Distribuer du vin et les faire se serrer la main'], ['By the second cup they are singing together.', 'À la deuxième tasse, ils chantent ensemble.'],
+  ['Talk them down yourself', 'Les calmer vous-même'], ['Needs Leadership', 'Demande du Commandement'], ['Needs Navigation', 'Demande de la Navigation'],
+  ['You walk between the knives and they drop their eyes. They will follow you anywhere after this.', 'Vous marchez entre les couteaux et ils baissent les yeux. Après cela, ils vous suivront partout.'],
+  ['They do not listen. A man is stabbed before the mates break it up.', 'Ils n’écoutent pas. Un homme est poignardé avant que les maîtres ne les séparent.'],
+  ['St Elmo’s fire', 'Le feu Saint-Elme'], ['Blue fire burns on the mastheads. The crew fall to their knees.', 'Un feu bleu brûle en tête de mât. L’équipage tombe à genoux.'],
+  ['Lead a prayer', 'Mener une prière'], ['The fire fades at dawn. The men are quiet and steady.', 'Le feu s’éteint à l’aube. Les hommes sont calmes et fermes.'], ['Tell them it means a fair wind', 'Leur dire que cela annonce bon vent'],
+  ['The wind holds fair all the next day, and they believe you.', 'Le vent reste favorable tout le lendemain, et ils vous croient.'], ['The wind dies at sunrise. They remember what you said.', 'Le vent tombe au lever du soleil. Ils se souviennent de vos paroles.'],
+  ['The yellow flag', 'Le pavillon jaune'], ['A ship under a yellow flag begs for food. There is sickness aboard, and no harbour will let her in.', 'Un navire sous pavillon jaune mendie des vivres. La maladie est à bord, et aucun port ne veut de lui.'],
+  ['Send a boat with provisions', 'Envoyer un canot avec des vivres'], ['The boat’s crew bring the sickness back with them.', 'Les hommes du canot rapportent la maladie avec eux.'], ['They lower a basket and weep. Your men row back unharmed.', 'Ils descendent un panier et pleurent. Vos hommes reviennent indemnes.'],
+  ['Sell from a distance', 'Vendre à distance'], ['Coins passed through vinegar', 'Pièces passées au vinaigre'], ['They pay three times the price and thank you for it.', 'Ils paient trois fois le prix et vous en remercient.'],
+  ['Keep to windward and pass', 'Rester au vent et passer'], ['Nobody speaks until she is hull down.', 'Personne ne parle avant qu’il ait disparu sous l’horizon.'],
+  ['A lugger with no flag', 'Un lougre sans pavillon'], ['A small craft runs alongside at dusk. Her master has goods to sell at half their price, no questions asked.', 'Une petite embarcation vient le long du bord au crépuscule. Son patron a des marchandises à vendre à moitié prix, sans questions.'],
+  ['Buy the lot', 'Acheter le lot'], ['The bales come over the rail in the dark.', 'Les ballots passent par-dessus la lisse dans le noir.'], ['Decline', 'Décliner'],
+  ['A ship that has lost her reckoning', 'Un navire qui a perdu son estime'], ['A merchantman heaves to and her master asks, red-faced, where on God’s sea he is.', 'Un marchand met en panne et son patron demande, rouge de honte, où diable il se trouve.'],
+  ['Give him his position', 'Lui donner sa position'], ['He checks it against the stars that night and sends over a purse.', 'Il la vérifie aux étoiles la nuit même et vous fait porter une bourse.'], ['You are thirty leagues out yourself. He will find that out.', 'Vous vous trompez vous-même de trente lieues. Il s’en apercevra.'],
+  ['Sell him a copy of your chart', 'Lui vendre une copie de votre carte'], ['He pays without haggling.', 'Il paie sans marchander.'],
+  ['X marks the spot', 'La croix marque l’endroit'], ['The reef is where the charcoal said. At low water the boats find an iron-bound chest wedged in the coral.', 'Le récif est là où le charbon le disait. À marée basse, les canots trouvent un coffre ferré coincé dans le corail.'], ['The lock gives at the third blow.', 'La serrure cède au troisième coup.'],
+  ['Hail', 'Héler'], ['Wish them fair winds', 'Leur souhaiter bon vent'], ['A merchantman heaves to', 'Un marchand met en panne'], ['Her master comes to the rail with a speaking trumpet. He is wary, but glad of company.', 'Son patron vient à la lisse avec un porte-voix. Il est méfiant, mais content d’avoir de la compagnie.'],
+  ['Ask for news', 'Demander des nouvelles'], ['Buy provisions', 'Acheter des vivres'], ['20 days for 50 ducats', '20 jours pour 50 ducats'], ['Casks of biscuit and salt pork swing across on a whip.', 'Des barils de biscuit et de porc salé passent d’un bord à l’autre au palan.'],
+  ['Demand tribute', 'Exiger un tribut'], ['Piracy, if he pays or if he fights', 'De la piraterie, qu’il paie ou qu’il se batte'], ['He counts your guns, then counts out his silver. His owners will hear of it.', 'Il compte vos canons, puis compte son argent. Ses armateurs en entendront parler.'],
+  ['A warship answers your hail', 'Un navire de guerre répond'], ['Her captain looks over your ship without hurry, then touches his hat.', 'Son capitaine examine votre navire sans hâte, puis porte la main à son chapeau.'],
+  ['Ask where the raiders are', 'Demander où sont les pillards'], ['He marks them for you on the chart. For three days your lookouts will pick out raiders far beyond the horizon.', 'Il vous les marque sur la carte. Pendant trois jours, vos vigies repéreront les pillards bien au-delà de l’horizon.'],
+  ['Buy biscuit from his stores', 'Acheter du biscuit sur ses réserves'], ['20 days for 60 ducats', '20 jours pour 60 ducats'], ['His purser is happy to oblige, at a price.', 'Son commis s’exécute volontiers, moyennant finance.'],
+  ['A raider lies to under your lee', 'Un corsaire met en panne sous votre vent'], ['She is no enemy of yours today. Her captain grins and asks if you are buying.', 'Il n’est pas votre ennemi aujourd’hui. Son capitaine sourit et demande si vous achetez.'],
+  ['Buy his plunder', 'Acheter son butin'], ['Nobody asks where it came from.', 'Personne ne demande d’où cela vient.'], ['Ask what he has seen', 'Demander ce qu’il a vu'],
+  ['He tells you which warships are out and where. For two days your lookouts know where to look.', 'Il vous dit quels navires de guerre sont en mer, et où. Pendant deux jours, vos vigies savent où regarder.'],
+  ['An Albanian renegade out of Algiers who boasts that he has never lost a chase.', 'Un renégat albanais d’Algiers qui se vante de n’avoir jamais perdu une chasse.'], ['A Genoese shipowner who buys cheap wherever you meant to.', 'Un armateur génois qui achète à bas prix partout où vous comptiez le faire.'],
+  ['A Knight of St John more interested in prizes than in prayers.', 'Un chevalier de Saint-Jean plus intéressé par les prises que par les prières.'], ['A Dieppe privateer who hunts the silver ships and laughs at Seville.', 'Un corsaire dieppois qui chasse les navires de l’argent et se rit de Seville.'],
+  ['A Surat shipmaster who knows every monsoon by name.', 'Un patron de Surat qui connaît chaque mousson par son nom.'], ['He brings his ship within hail and waits to hear what you want.', 'Il amène son navire à portée de voix et attend de savoir ce que vous voulez.'],
+  ['Sworn enemy', 'Ennemi juré'], ['Cold', 'Froid'], ['Friend', 'Ami'], ['Respectful', 'Respectueux'], ['Rival', 'Rival'], ['refitting', 'en radoub'],
+  ['Race him to {}', c => `Faire la course jusqu’à ${c[0]}`], ['Race him', 'Faire la course'], ['Wager {} ducats.', c => `Enjeu : ${c[0]} ducats.`], ['First into the roads wins.', 'Le premier en rade gagne.'], ['No harbour in reach to race for', 'Aucun port à portée pour une course'],
+  ['Challenge him to a duel', 'Le défier en duel'], ['Ship against ship. No law is broken and no bounty raised.', 'Navire contre navire. Aucune loi n’est enfreinte et aucune prime n’est levée.'],
+  ['Share a bottle', 'Partager une bouteille'], ['40 ducats. He may tell you something useful.', '40 ducats. Il vous dira peut-être quelque chose d’utile.'], ['He comes aboard and drinks your wine.', 'Il monte à bord et boit votre vin.'],
+  ['Race to {}', c => `Course vers ${c[0]}`], ['The purse is {} ducats, for the first ship into the roads.', c => `L’enjeu est de ${c[0]} ducats, pour le premier navire en rade.`], ['{} is already making sail.', c => `${c[0]} fait déjà de la toile.`],
+  ['You win the race', 'Vous gagnez la course'], ['{} dips his flag and pays {} ducats.', c => `${c[0]} salue du pavillon et paie ${c[1]} ducats.`], ['You lose the race', 'Vous perdez la course'],
+  ['{} is at anchor before you.', c => `${c[0]} est à l’ancre avant vous.`], ['You pay {} ducats.', c => `Vous payez ${c[0]} ducats.`], ['The race is off', 'La course est annulée'], ['{} has left these waters.', c => `${c[0]} a quitté ces eaux.`], ['You have left these waters.', 'Vous avez quitté ces eaux.'],
+  ['You: {} nm to run', c => `Vous : ${c[0]} milles à courir`],
+  ['{} strikes his colours.', c => `${c[0]} amène son pavillon.`], ['He will be back, with a better ship and a longer memory.', 'Il reviendra, avec un meilleur navire et la mémoire longue.'], ['{} drinks your health with your own wine.', c => `${c[0]} boit à votre santé avec votre propre vin.`],
+  ['{} takes a rich prize', c => `${c[0]} fait une riche prise`], ['He grows bolder every month, and his crew richer.', 'Il s’enhardit de mois en mois, et son équipage s’enrichit.'], ['{} corners a market', c => `${c[0]} accapare un marché`],
+  ['He bought a whole harvest and sold it at twice the price.', 'Il a acheté toute une récolte et l’a revendue au double.'], ['{} asks after you', c => `${c[0]} demande de vos nouvelles`], ['He has been heard in the taverns saying that he will outsail you.', 'On l’a entendu dire dans les tavernes qu’il vous battra à la voile.'],
+  ['Rival captains', 'Capitaines rivaux'], ['You have crossed no captain worth the name yet. They sail every sea; hail one when you meet him.', 'Vous n’avez encore croisé aucun capitaine digne de ce nom. Ils courent toutes les mers ; hélez-en un quand vous le rencontrerez.'],
+  ['Races {}', c => `Courses ${c[0]}`], ['duels {}', c => `duels ${c[0]}`],
+  ['Book of deeds', 'Livre des hauts faits'], ['{} of {} accomplished', c => `${c[0]} sur ${c[1]} accomplis`], ['Deed: {}', c => `Haut fait : ${T(c[0])}`], ['Your fame is worth {} ducats.', c => `Votre renommée vaut ${c[0]} ducats.`],
+  ['First blood', 'Premier sang'], ['Take your first prize.', 'Faites votre première prise.'], ['Scourge of the sea', 'Fléau des mers'], ['Take 10 prizes.', 'Faites 10 prises.'], ['Terror of three seas', 'Terreur des trois mers'], ['Take 30 prizes.', 'Faites 30 prises.'],
+  ['Pilot', 'Pilote'], ['Chart 20 ports.', 'Portez 20 ports sur la carte.'], ['Master pilot', 'Maître pilote'], ['Chart 50 ports.', 'Portez 50 ports sur la carte.'], ['The whole portolan', 'Le portulan entier'], ['Chart every port on all three charts.', 'Portez tous les ports des trois cartes.'],
+  ['Man of substance', 'Homme de bien'], ['Hold 10,000 ducats in purse and bank.', 'Possédez 10 000 ducats, bourse et banque.'], ['Merchant prince', 'Prince marchand'], ['Hold 100,000 ducats in purse and bank.', 'Possédez 100 000 ducats, bourse et banque.'],
+  ['Across the Ocean Sea', 'À travers la mer Océane'], ['Reach the Indies.', 'Atteignez les Indes.'], ['The road to India', 'La route de l’Inde'], ['Reach the Arabian Sea.', 'Atteignez la mer d’Arabie.'], ['Up the Nile', 'En remontant le Nil'], ['Drop anchor at Cairo.', 'Mouillez à Cairo.'],
+  ['Beyond the Bosporus', 'Au-delà du Bosphore'], ['Drop anchor in a Black Sea port.', 'Mouillez dans un port de la mer Noire.'], ['Northern waters', 'Eaux du Nord'], ['Drop anchor in an English port.', 'Mouillez dans un port anglais.'],
+  ['Lord of a harbour', 'Seigneur d’un port'], ['Found a harbour of your own.', 'Fondez votre propre port.'], ['Commodore', 'Commodore'], ['Own three ships besides your flagship.', 'Possédez trois navires en plus du vôtre.'], ['A full wardroom', 'Un carré complet'], ['Sign three lieutenants.', 'Engagez trois lieutenants.'],
+  ['Officer of the crown', 'Officier de la couronne'], ['Reach the fourth rank in any service.', 'Atteignez le quatrième rang dans un service.'], ['Reach the highest rank in any service.', 'Atteignez le plus haut rang dans un service.'],
+  ['Fastest keel', 'La quille la plus rapide'], ['Win a race against a rival captain.', 'Gagnez une course contre un capitaine rival.'], ['Settled at sea', 'Réglé en mer'], ['Beat a rival captain in a duel.', 'Battez un capitaine rival en duel.'],
+  ['Dig up a buried treasure.', 'Déterrez un trésor enfoui.'], ['Weathered', 'Éprouvé par le temps'], ['Come through five squalls.', 'Traversez cinq grains.'], ['Tales to tell', 'Des histoires à raconter'], ['Meet ten adventures at sea.', 'Vivez dix aventures en mer.'],
+  ['Ghost ship', 'Vaisseau fantôme'], ['Lose a pursuer in the fog.', 'Semez un poursuivant dans la brume.'], ['Old salt', 'Vieux loup de mer'], ['Reach level 10.', 'Atteignez le niveau 10.'],
   // ---- the Indies and the Arabian Sea ----
   ['Silver', 'Argent'], ['Hides', 'Cuirs'], ['Cochineal', 'Cochenille'], ['Pearls', 'Perles'], ['Logwood', 'Bois de campêche'], ['Coffee', 'Café'], ['Horses', 'Chevaux'],
   ['Calico', 'Calicot'], ['Cinnamon', 'Cannelle'], ['Frankincense', 'Encens'], ['Dhow', 'Boutre'],
@@ -3571,6 +3722,57 @@ function townStyle(f) {
   return ({ ottoman: 'islamic', barbary: 'islamic', morocco: 'islamic', crimea: 'islamic', spain: 'iberian', portugal: 'iberian', france: 'french', huguenot: 'french',
     venice: 'italian', genoa: 'italian', ragusa: 'italian', knights: 'fortress', player: 'fortress', none: 'empty', cossack: 'empty', interlopers: 'empty', england: 'french', gujarat: 'islamic', mughal: 'islamic', calicut: 'islamic', swahili: 'islamic' })[f] || 'italian';
 }
+// ---------- what each great harbour looked like around 1570 ----------
+// Offsets are in pixels from the middle of the town; heights are measured up from the quay.
+const CITY = {
+  venice:    { flat: 1, flag: [-87, 92], fg: k => { k.rect(-66, 20, 58, k.pink); k.arcade(-66, 58); k.rect(2, 20, 50); for (const dx of [10, 27, 44]) k.dome(dx, 8, 20, k.lead); k.rect(-92, 72, 10, k.brick); k.rect(-93, 78, 12, k.stone, 72); k.spire(-93, 12, 16, 78, k.verd); } },
+  genoa:     { flag: [-118, 96], bg: k => { k.hump(0, 520, 74, k.far); k.hump(-80, 300, 50, k.near); }, fg: k => { k.hump(-116, 44, 16, k.rock); k.rect(-121, 52, 10, k.stone, 12); k.rect(-119, 30, 6, k.stone, 62); k.spire(-119, 6, 6, 92); k.rect(10, 26, 30); k.rect(20, 44, 9, k.stone); k.stripes(20, 9, 44); } },
+  istanbul:  { flag: [38, 78], bg: k => { k.hump(-20, 460, 40, k.near); }, fg: k => { k.rect(-150, 34, 11, k.stone); k.spire(-151, 13, 14, 34, k.lead);
+               k.rect(-34, 26, 44, k.pink); k.dome(-12, 20, 26, k.lead); k.dome(-32, 8, 24, k.lead); k.dome(8, 8, 24, k.lead); for (const dx of [-44, -38, 14, 20]) k.minaret(dx, 62);
+               k.rect(70, 30, 40, k.stone, 14); k.dome(90, 16, 44, k.lead); for (const dx of [62, 114]) k.minaret(dx, 74); } },
+  alexandria:{ flat: 1, flag: [-104, 62], fg: k => { k.rect(-150, 6, 110, k.stone); k.rect(-118, 30, 34, k.stone); k.crenel(-118, 34, 30); for (const dx of [-122, -84]) { k.rect(dx, 36, 8, k.stone); k.crenel(dx, 8, 36); } k.rect(-106, 46, 10, k.stone); k.crenel(-106, 10, 46); k.minaret(40, 44); k.dome(60, 10, 14); k.palm(100, 26); k.palm(112, 20); } },
+  cairo:     { flag: [-58, 88], bg: k => { k.cone(170, 58, 30, k.far); k.cone(214, 44, 23, k.far); k.cone(246, 26, 14, k.far); k.hump(-60, 240, 52, k.near); }, fg: k => { k.rect(-92, 20, 70, k.stone, 44); k.crenel(-92, 70, 64); k.rect(-64, 16, 12, k.stone, 64); for (const dx of [-10, 22, 48, 80]) k.minaret(dx, 40 + (dx % 3) * 6); k.dome(36, 11, 16); k.dome(-28, 8, 12); k.palm(110, 24); k.palm(-130, 22); } },
+  marseille: { flag: [-108, 58], bg: k => { k.hump(110, 150, 86, k.near); k.rect(104, 10, 14, k.stone, 84); k.spire(108, 6, 9, 94); }, fg: k => { k.rect(-114, 50, 16, k.stone); k.crenel(-114, 16, 50); k.rect(-140, 18, 28, k.stone); k.crenel(-140, 28, 18); k.rect(10, 30, 26); k.rect(18, 46, 9); k.spire(17, 11, 12, 46); } },
+  seville:   { flat: 1, flag: [-17, 108], fg: k => { k.rect(-70, 30, 96, k.stone); for (let i = 0; i < 6; i++) k.spire(-66 + i * 15, 6, 8, 30, k.stone); k.rect(-22, 70, 13, k.pink); k.rect(-21, 18, 11, k.stone, 70); k.rect(-19, 10, 7, k.stone, 88); k.spire(-19, 7, 6, 98, k.verd);
+               k.rect(96, 30, 15, k.gold); k.crenel(96, 15, 30); k.rect(100, 12, 7, k.gold, 32); k.dome(103.5, 3.5, 44, k.gold); k.palm(-110, 24); k.palm(140, 22); } },
+  lisbon:    { flag: [-128, 62], bg: k => { k.hump(40, 220, 60, k.near); k.rect(16, 12, 52, k.stone, 56); k.crenel(16, 52, 68); k.rect(30, 10, 10, k.stone, 68); }, fg: k => { k.rect(-146, 22, 26, k.stone); k.crenel(-146, 26, 22); k.rect(-134, 50, 14, k.stone); k.crenel(-134, 14, 50); for (const dx of [-135, -121]) k.dome(dx, 2.5, 54, k.stone); k.rect(60, 26, 70, k.wall); k.arcade(60, 70); k.rect(120, 40, 12, k.wall); k.spire(119, 14, 10, 40); } },
+  algiers:   { flag: [4, 96], bg: k => { k.hump(0, 300, 92, k.near); }, fg: k => { for (let r = 0; r < 9; r++) for (let i = 0; i <= 8 - r; i++) k.rect(-72 + r * 8 + i * 16 + (r % 2) * 3, 9, 13, r % 2 ? k.wall : k.white, r * 9.5); k.rect(-4, 14, 14, k.stone, 84); k.crenel(-4, 14, 98); k.minaret(-46, 46); k.rect(-150, 5, 70, k.stone); k.rect(-150, 22, 9, k.white); k.dome(-145.5, 4.5, 22, k.white); } },
+  birgu:     { flag: [-8, 80], fg: k => { k.rect(-70, 22, 140, k.gold); k.crenel(-70, 140, 22); k.rect(-52, 20, 104, k.gold, 22); k.crenel(-52, 104, 42); k.rect(-30, 18, 60, k.gold, 42); k.crenel(-30, 60, 60); k.rect(-12, 14, 14, k.gold, 60); k.crenel(-12, 14, 74); k.rect(96, 26, 22); k.dome(107, 9, 26, k.roofC); } },
+  ragusa:    { flag: [-98, 78], bg: k => { k.hump(30, 420, 78, k.far); }, fg: k => { k.rect(-110, 26, 200, k.stone); k.crenel(-110, 200, 26); k.rect(-106, 60, 22, k.stone); k.rect(-108, 8, 26, k.stone, 60); k.crenel(-108, 26, 68); for (const dx of [-40, 20, 76]) { k.rect(dx, 36, 12, k.stone); k.crenel(dx, 12, 36); } k.rect(-10, 40, 9); k.spire(-11, 11, 10, 40); k.hump(-158, 40, 26, k.rock); k.rect(-170, 22, 26, k.stone, 22); k.crenel(-170, 26, 44); } },
+  naples:    { flag: [-32, 70], bg: k => { k.cone(120, 250, 84, k.far); k.cone(60, 170, 60, k.far); }, fg: k => { k.rect(-70, 34, 80, k.rock); for (const dx of [-76, -52, -28, -4, 10]) { k.rect(dx, 52, 13, k.rock); k.crenel(dx, 13, 52); } k.rect(-38, 30, 12, k.white); k.rect(60, 28, 30); k.dome(75, 10, 28, k.roofC); } },
+  barcelona: { flag: [4, 78], bg: k => { k.hump(-190, 200, 62, k.near); k.rect(-196, 8, 14, k.stone, 58); }, fg: k => { k.rect(-20, 32, 46, k.stone); for (const dx of [-20, 16]) { k.rect(dx, 62, 10, k.stone); k.spire(dx, 10, 8, 62, k.stone); } k.rect(70, 16, 80, k.wall); for (let i = 0; i < 5; i++) k.spire(70 + i * 16, 16, 7, 16); k.arcade(70, 80); } },
+  rhodes:    { flag: [-60, 62], fg: k => { k.rect(-120, 24, 220, k.gold); k.crenel(-120, 220, 24); for (const dx of [-124, -64, 0, 60, 94]) { k.rect(dx, 34 + (dx === -64 ? 22 : 0), 14, k.gold); k.crenel(dx, 14, 34 + (dx === -64 ? 22 : 0)); } for (const dx of [130, 148, 166]) k.windmill(dx); k.minaret(30, 50); } },
+  larochelle:{ flat: 1, flag: [-58, 74], fg: k => { k.rect(-66, 56, 20, k.stone); k.crenel(-66, 20, 56); k.rect(-60, 12, 8, k.stone, 56); k.rect(-22, 40, 16, k.stone); k.spire(-23, 18, 9, 40, k.slate); k.rect(40, 44, 13, k.stone); k.spire(39, 15, 30, 44, k.stone); k.rect(-46, 14, 26, k.stone); } },
+  saintmalo: { flag: [0, 86], fg: k => { k.hump(0, 250, 14, k.rock); k.rect(-104, 22, 208, k.rock, 8); k.crenel(-104, 208, 30); for (let i = 0; i < 9; i++) { k.rect(-92 + i * 21, 20, 17, k.stone, 30); k.spire(-93 + i * 21, 19, 9, 50, k.slate); } k.rect(-4, 30, 8, k.stone, 44); k.spire(-5, 10, 22, 74, k.slate); for (const dx of [-116, 104]) { k.rect(dx, 34, 14, k.rock, 4); k.spire(dx - 1, 16, 10, 38, k.slate); } } },
+  nantes:    { flat: 1, flag: [-70, 64], fg: k => { k.rect(-100, 30, 90, k.stone); for (const dx of [-108, -70, -32, -16]) { k.rect(dx, 40, 15, k.stone); k.spire(dx - 1, 17, 14, 40, k.slate); } k.rect(50, 46, 34, k.stone); k.rect(50, 14, 11, k.stone, 46); k.rect(73, 14, 11, k.stone, 46); } },
+  plymouth:  { flag: [44, 70], bg: k => { k.hump(-90, 300, 44, k.green); }, fg: k => { k.rect(30, 28, 44, k.stone); k.spire(29, 46, 10, 28, k.slate); k.rect(40, 52, 12, k.stone); k.crenel(40, 12, 52); for (const dx of [39, 51]) k.spire(dx, 2, 6, 54, k.stone); k.rect(-150, 14, 30, k.stone, 38); k.crenel(-150, 30, 52); } },
+  southampton:{ flat: 1, flag: [0, 62], fg: k => { k.rect(-120, 22, 240, k.stone); k.crenel(-120, 240, 22); k.rect(-22, 40, 44, k.stone); k.crenel(-22, 44, 40); for (const dx of [-30, 20]) { k.rect(dx, 46, 10, k.stone); k.crenel(dx, 10, 46); } k.arcade(-8, 16); k.rect(80, 36, 9, k.stone); k.spire(79, 11, 20, 36, k.slate); } },
+  goa:       { palms: 1, flag: [-2, 72], fg: k => { k.rect(-34, 40, 64, k.white); k.spire(-34, 64, 12, 40, k.white); for (const dx of [-40, 22]) { k.rect(dx, 56, 14, k.white); k.dome(dx + 7, 7, 56, k.white); } k.arcade(-14, 24); k.rect(80, 26, 50, k.white); k.spire(79, 52, 10, 26); } },
+  havana:    { palms: 1, flat: 1, flag: [-50, 52], fg: k => { k.cone(-90, 60, 20, k.stone); k.rect(-90, 20, 80, k.stone); k.cone(-10, 60, 20, k.stone); k.crenel(-90, 80, 20); k.rect(-56, 26, 12, k.stone, 20); k.dome(-50, 4, 46, k.stone); k.rect(60, 24, 40, k.white); k.spire(59, 42, 9, 24); k.rect(74, 38, 9, k.white); k.spire(73, 11, 8, 38); } },
+  hormuz:    { flag: [-20, 62], bg: k => { k.cone(120, 260, 60, '#b0664a'); k.cone(-140, 200, 40, '#c98a5a'); }, fg: k => { k.rect(-80, 26, 150, k.stone); k.crenel(-80, 150, 26); for (const dx of [-86, -26, 58]) { k.cone(dx + 9, 34, 32, k.stone); k.rect(dx, 38, 18, k.stone); k.crenel(dx, 18, 38); } k.rect(-24, 16, 12, k.stone, 38); } },
+  aden:      { flag: [20, 60], bg: k => { for (const [dx, w, h] of [[-150, 180, 96], [-20, 200, 70], [130, 220, 104], [40, 120, 50]]) k.cone(dx, w, h, k.night ? '#141b22' : '#5b5048'); }, fg: k => { k.minaret(20, 50); k.dome(40, 10, 14, k.white); k.rect(-90, 18, 50, k.stone); k.crenel(-90, 50, 18); } },
+  caffa:     { flag: [-56, 82], bg: k => { k.hump(-40, 260, 46, k.near); }, fg: k => { k.rect(-120, 22, 170, k.stone, 26); k.crenel(-120, 170, 48); for (const dx of [-124, -62, 0, 44]) { k.rect(dx, 34 + (dx === -62 ? 18 : 0), 13, k.stone, 26); k.crenel(dx, 13, 60 + (dx === -62 ? 18 : 0)); } k.minaret(90, 44); k.dome(108, 9, 14); } },
+  trebizond: { flag: [0, 92], bg: k => { k.hump(0, 560, 88, k.far); k.hump(0, 150, 60, k.rock); }, fg: k => { k.rect(-56, 20, 112, k.stone, 56); k.crenel(-56, 112, 76); k.rect(-8, 12, 16, k.stone, 76); k.dome(40, 9, 76, k.lead); k.minaret(-84, 40); } },
+  palermo:   { flag: [32, 66], bg: k => { k.hump(-170, 210, 96, k.far); }, fg: k => { k.rect(-10, 30, 80, k.gold); for (const dx of [-14, 62]) { k.rect(dx, 52, 10, k.gold); k.spire(dx, 10, 10, 52, k.gold); } k.dome(30, 9, 30, k.roofC); k.palm(-80, 24); k.palm(110, 22); } },
+  tunis:     { flag: [-130, 52], fg: k => { k.rect(-150, 30, 46, k.stone); k.crenel(-150, 46, 30); k.rect(-136, 12, 14, k.stone, 30); k.rect(-4, 30, 60, k.white); k.dome(26, 13, 30, k.white); k.rect(60, 62, 11, k.stone); k.crenel(60, 11, 62); k.palm(120, 24); } },
+};
+function cityKit(g, W, H, baseY, wall, roof, night, far, near, lx) {
+  const nt = c => night ? (c === roof || c === k.slate || c === k.lead || c === k.verd ? '#262a31' : c === far ? '#1d2b39' : c === near || c === k.green ? '#16222e' : c === k.rock ? '#262c33' : '#474a52') : c;
+  const k = { g, W, H, baseY, lx, night, wall, roofC: roof, far, near, brick: '#b06a4c', pink: '#e2bfae', verd: '#6f9d8c', stone: '#d2c6a8', rock: '#8f8776', white: '#f4eee0', gold: '#dcc48e', lead: '#9aa3a6', slate: '#4e5560', green: '#6f9160',
+    rect(dx, h, w, col = wall, at = 0) { g.fillStyle = nt(col); g.fillRect(k.lx + dx, baseY - at - h, w, h); g.fillStyle = 'rgba(0,0,0,0.13)'; g.fillRect(k.lx + dx + w * 0.66, baseY - at - h, w * 0.34, h); },
+    spire(dx, w, sh, at, col = roof) { g.fillStyle = nt(col); g.beginPath(); g.moveTo(k.lx + dx, baseY - at); g.lineTo(k.lx + dx + w / 2, baseY - at - sh); g.lineTo(k.lx + dx + w, baseY - at); g.fill(); },
+    dome(cx, r, at, col = wall) { g.fillStyle = nt(col); g.beginPath(); g.arc(k.lx + cx, baseY - at, r, Math.PI, 0); g.fill(); g.fillRect(k.lx + cx - 0.6, baseY - at - r - 4, 1.2, 4); },
+    minaret(dx, h) { k.rect(dx, h, 4, k.white); g.fillStyle = nt(k.white); g.fillRect(k.lx + dx - 1.5, baseY - h * 0.78, 7, 2); k.spire(dx - 0.5, 5, 9, h, k.lead); },
+    crenel(dx, w, at, col) { g.fillStyle = nt(col || k.stone); for (let x = 0; x < w - 1; x += 5) g.fillRect(k.lx + dx + x, baseY - at - 3, 3, 3); },
+    hump(cx, w, h, col) { g.fillStyle = nt(col); g.beginPath(); g.ellipse(k.lx + cx, baseY + 2, w / 2, h, 0, Math.PI, 0); g.fill(); },
+    cone(cx, w, h, col) { g.fillStyle = nt(col); g.beginPath(); g.moveTo(k.lx + cx - w / 2, baseY + 2); g.lineTo(k.lx + cx - w * 0.06, baseY - h); g.lineTo(k.lx + cx + w * 0.08, baseY - h * 0.97); g.lineTo(k.lx + cx + w / 2, baseY + 2); g.fill(); },
+    arcade(dx, w) { g.fillStyle = 'rgba(30,24,18,0.5)'; for (let x = 3; x < w - 4; x += 7) { g.beginPath(); g.arc(k.lx + dx + x + 2, baseY - 6, 2.2, Math.PI, 0); g.fill(); g.fillRect(k.lx + dx + x - 0.2, baseY - 6, 4.4, 6); } },
+    stripes(dx, w, h) { g.fillStyle = 'rgba(40,40,40,0.35)'; for (let y = 4; y < h; y += 8) g.fillRect(k.lx + dx, baseY - y - 3, w, 3); },
+    palm(dx, h) { g.strokeStyle = night ? '#1a231c' : '#6b5a3a'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(k.lx + dx, baseY); g.quadraticCurveTo(k.lx + dx + 3, baseY - h * 0.5, k.lx + dx + 1, baseY - h); g.stroke(); g.strokeStyle = night ? '#16261b' : '#3f6b3c'; g.lineWidth = 1.8; for (let a = 0; a < 6; a++) { const an = -Math.PI * (0.05 + a * 0.18); g.beginPath(); g.moveTo(k.lx + dx + 1, baseY - h); g.quadraticCurveTo(k.lx + dx + 1 + Math.cos(an) * 6, baseY - h - 5, k.lx + dx + 1 + Math.cos(an) * 10, baseY - h + 3 + Math.sin(an) * 2); g.stroke(); } },
+    windmill(dx) { k.rect(dx, 16, 7, k.white); k.spire(dx - 1, 9, 5, 16); g.strokeStyle = night ? '#3a3d44' : '#6b5a3a'; g.lineWidth = 1; for (let a = 0; a < 4; a++) { g.beginPath(); g.moveTo(k.lx + dx + 3.5, baseY - 17); g.lineTo(k.lx + dx + 3.5 + Math.cos(a * Math.PI / 2 + 0.5) * 9, baseY - 17 + Math.sin(a * Math.PI / 2 + 0.5) * 9); g.stroke(); } },
+  };
+  return k;
+}
 // Paint the harbour scene for a port. Deterministic per port; light follows the hour.
 function paintHarbour(cv, p) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2), W = cv.clientWidth || 760, H = cv.clientHeight || 132;
@@ -3592,13 +3794,17 @@ function paintHarbour(cv, p) {
   // hills in two layers
   const hill = (base, amp, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(0, H); for (let x = 0; x <= W; x += 8) g.lineTo(x, base - amp * (0.5 + 0.5 * Math.sin(x / (60 + rnd() * 2) + rnd() * 0.3)) - amp * 0.5 * Math.sin(x / 23)); g.lineTo(W, H); g.fill(); };
   const far = night ? '#1d2b39' : dry ? '#c9b083' : green ? '#7d9a77' : '#a3a27a', near = night ? '#16222e' : dry ? '#b09466' : green ? '#5f7f58' : '#8b8a5e';
-  if (p.f !== 'none') hill(H * 0.5, H * 0.14, far);
-  hill(H * 0.6, H * 0.1, near);
+  const city = p.f === 'none' ? null : CITY[p.id], tropic = (p.th === 'carib' || p.th === 'indian') && p.lat < 24 && p.lat > -12 && !['aden', 'hormuz', 'muscat', 'jeddah', 'mocha', 'suez', 'basra'].includes(p.id);
+  if (p.f !== 'none' && !(city && city.flat)) hill(H * 0.5, H * 0.14, far);
+  if (!(city && city.flat)) hill(H * 0.6, H * 0.1, near); else { g.fillStyle = near; g.fillRect(0, H * 0.635, W, H * 0.05); }
   // town
   const style = townStyle(p.f), wall = night ? '#4a4c52' : style === 'islamic' || style === 'iberian' ? '#efe6d2' : '#d9c8a8';
   const roof = night ? '#2c2d33' : style === 'french' ? '#4e5560' : style === 'islamic' ? '#d8cfbb' : '#b35a3c';
   const baseY = H * 0.66, n = style === 'empty' ? 0 : 14 + p.yard * 8;
   const cx0 = W * 0.18, span = W * 0.64;
+  const kit = cityKit(g, W, H, baseY, wall, roof, night, far, near, W * 0.5);
+  const cs = clamp((baseY - 6) / 104, 0.55, 1.3), cityDraw = fn => { g.save(); g.translate(W * 0.5, baseY); g.scale(cs, cs); g.translate(-W * 0.5, -baseY); fn(kit); g.restore(); };
+  if (city && city.bg) cityDraw(city.bg);
   const houses = [];
   for (let i = 0; i < n; i++) houses.push([cx0 + rnd() * span, 8 + rnd() * 14, 6 + rnd() * 16 * (1 - Math.abs(rnd() - 0.5))]);
   houses.sort((a, b) => b[2] - a[2]);
@@ -3612,8 +3818,9 @@ function paintHarbour(cv, p) {
   }
   // landmark
   const lx = cx0 + span * (0.35 + rnd() * 0.3), tw = 12;
-  g.fillStyle = wall;
-  if (style === 'islamic') {
+  g.fillStyle = wall; kit.lx = W * 0.5;
+  if (city && city.fg) cityDraw(city.fg);
+  else if (style === 'islamic') {
     g.beginPath(); g.arc(lx, baseY - 26, 16, Math.PI, 0); g.fill(); g.fillRect(lx - 16, baseY - 26, 32, 26);
     for (const mx of [lx - 26, lx + 24]) { g.fillRect(mx, baseY - 58, 5, 58); g.beginPath(); g.moveTo(mx - 1, baseY - 58); g.lineTo(mx + 2.5, baseY - 68); g.lineTo(mx + 6, baseY - 58); g.fill(); }
   } else if (style === 'italian') {
@@ -3625,12 +3832,14 @@ function paintHarbour(cv, p) {
     g.fillRect(lx - 16, baseY - 40, 44, 40); for (let k = 0; k < 6; k++) g.fillRect(lx - 16 + k * 8, baseY - 45, 4, 5);
     g.fillRect(lx + 4, baseY - 58, 14, 18); for (let k = 0; k < 3; k++) g.fillRect(lx + 4 + k * 5, baseY - 62, 3, 4);
   }
+  if (tropic || (city && city.palms)) for (let i = 0; i < 9; i++) kit.palm(-W * 0.4 + rnd() * W * 0.8, 16 + rnd() * 14);
   if (p.haven) { // pines, a few palm-thatched huts and a careening fire on the beach
     for (let i = 0; i < 26; i++) { const x = W * 0.08 + rnd() * W * 0.8, h = 18 + rnd() * 26; g.fillStyle = night ? '#132019' : '#2f4a33'; g.fillRect(x - 1, baseY - h * 0.35, 2, h * 0.35); g.beginPath(); g.moveTo(x - h * 0.22, baseY - h * 0.3); g.lineTo(x, baseY - h); g.lineTo(x + h * 0.22, baseY - h * 0.3); g.fill(); }
     for (let i = 0; i < 5; i++) { const x = W * 0.3 + rnd() * W * 0.35; g.fillStyle = night ? '#3a3226' : '#a08452'; g.fillRect(x, baseY - 7, 12, 7); g.fillStyle = night ? '#2a2419' : '#7a6235'; g.beginPath(); g.moveTo(x - 2, baseY - 7); g.lineTo(x + 6, baseY - 14); g.lineTo(x + 14, baseY - 7); g.fill(); }
     g.fillStyle = 'rgba(240,150,60,0.85)'; g.beginPath(); g.arc(W * 0.56, baseY - 3, 3, 0, TAU); g.fill();
   }
-  if (style !== 'empty') drawFlagOn(g, p.f, style === 'islamic' ? lx + 24 : lx + 6, baseY - (style === 'islamic' ? 68 : style === 'french' ? 80 : 74), 18);
+  if (city && city.flag) drawFlagOn(g, p.f, W * 0.5 + city.flag[0] * cs, baseY - city.flag[1] * cs, 18);
+  else if (style !== 'empty') drawFlagOn(g, p.f, style === 'islamic' ? lx + 24 : lx + 6, baseY - (style === 'islamic' ? 68 : style === 'french' ? 80 : 74), 18);
   // sea
   const sea = g.createLinearGradient(0, baseY, 0, H);
   sea.addColorStop(0, night ? '#13283a' : '#3b7b8c'); sea.addColorStop(1, night ? '#0a1824' : '#1d4c5f');
@@ -4120,6 +4329,13 @@ function draw(now) {
     }
   }
   ctx.textAlign = 'left';
+  // a treasure cross from a map
+  if (S.treasure && S.treasure.th === curTh() && onScreen(S.treasure.x, S.treasure.y)) {
+    const X = sx(S.treasure.x), Y = sy(S.treasure.y);
+    ctx.strokeStyle = 'rgba(16,14,10,0.8)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    for (const col of [null, COL.bad]) { if (col) { ctx.strokeStyle = col; ctx.lineWidth = 2.5; } ctx.beginPath(); ctx.moveTo(X - 7, Y - 7); ctx.lineTo(X + 7, Y + 7); ctx.moveTo(X + 7, Y - 7); ctx.lineTo(X - 7, Y + 7); ctx.stroke(); }
+    ctx.font = `italic 12px ${CSS('--font-italic')}`; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(16,14,10,0.8)'; const tt = trc('Treasure'); ctx.strokeText(tt, X, Y + 20); ctx.fillStyle = COL.paper; ctx.fillText(tt, X, Y + 20); ctx.textAlign = 'left';
+  }
   // npcs within sight
   for (const n of S.npcs) {
     if (!onScreen(n.x, n.y) || !npcVisible(n)) continue;
@@ -4129,13 +4345,19 @@ function draw(now) {
     ctx.globalAlpha = far ? 0.55 : 1;
     drawShip(X, Y, n.heading, size, n.f === 'rogue' ? '#1b1815' : FACTIONS[n.f].color, def.rig, def.oars > 0.5, false, n.f);
     ctx.globalAlpha = 1;
-    if (close && !far) {
+    if (n.kind === 'rival') {
+      ctx.strokeStyle = 'rgba(232,190,90,0.9)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(X, Y, size * 1.6, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = `13px ${CSS('--font-display')}`; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(16,14,10,0.85)';
+      const nm = rivalById(n.rid).name; ctx.strokeText(nm, X, Y + size * 1.9 + 11); ctx.fillStyle = '#f0cf7a'; ctx.fillText(nm, X, Y + size * 1.9 + 11); ctx.textAlign = 'left';
+    }
+    if (close && !far && n.kind !== 'rival') {
       const kindName = { merchant: 'merchant', patrol: 'warship', corsair: n.f === 'barbary' ? '' : n.f === 'huguenot' ? 'privateer' : 'corsair', siege: 'armada galley', rogue: 'pirate', hunter: 'bounty hunter', cossack: 'chaika', treasure: 'TREASURE', escort: 'escort' }[n.kind];
       ctx.font = `11px ${CSS('--font-body')}`; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(16,14,10,0.8)';
       const t = trc(n.f === 'barbary' && n.kind === 'corsair' ? 'Barbary corsair' : `${FACTIONS[n.f].adj} ${kindName}`.trim()); ctx.strokeText(t, X, Y + size * 1.9 + 10); ctx.fillStyle = huntsYou(n) ? '#ffb3a3' : COL.paper; ctx.fillText(t, X, Y + size * 1.9 + 10);
       ctx.textAlign = 'left';
     }
   }
+  drawWeather(sx, sy, z, now, onScreen);
   // escorts follow in your wake
   escorts().forEach((f, i) => {
     const k = wake.length - 1 - (i + 1) * 5; let ex, ey, eh = S.heading;
@@ -4146,6 +4368,7 @@ function draw(now) {
   // player
   const pd = shipDef();
   drawShip(AX, AY, S.heading, clamp(z * 7, 8, close ? 32 : 24), COL.paper, pd.rig, pd.oars > 0.5, true, playerFlag());
+  drawNight(AX, AY, W, H, sx, sy, z, onScreen);
   // vignette
   const g = ctx.createRadialGradient(AX, AY, Math.min(W, H) * 0.35, AX, AY, Math.max(W, H) * 0.75);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(4,10,14,0.45)');
@@ -4291,7 +4514,7 @@ function updateHUD() {
   $('#hHold').innerHTML = `<b>${cargoUsed()}/${holdTotal()}</b>`;
   $('#hShip').textContent = def.name + (escorts().length ? ` + ${escorts().length} escort${escorts().length > 1 ? 's' : ''}` : '');
   document.querySelectorAll('#sails button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.sail === S.sail)));
-  $('#fastBtn').setAttribute('aria-pressed', String(timeScale > 1));
+  $('#fastBtn').setAttribute('aria-pressed', String(DECK.on ? DECK.fast : timeScale > 1));
   $('#tiltBtn').setAttribute('aria-pressed', String(tilt3D));
   $('#sndBtn').setAttribute('aria-pressed', String(AUDIO.sfxOn || AUDIO.musicOn));
   if (AUDIO.ctx) audioTick();
@@ -4318,8 +4541,12 @@ function updateHUD() {
     const n = nearShip, nd = SHIPS[n.type], hostile = huntsYou(n), lawful = lawfulTarget(n.f), safe = inSafeZone(S.x, S.y);
     const kindName = { merchant: 'merchantman', patrol: 'warship', corsair: n.f === 'knights' ? 'corsair of the Order' : n.f === 'huguenot' ? 'privateer' : 'raider', siege: 'galley of the armada', rogue: 'pirate', hunter: 'bounty hunter', cossack: 'raiders', treasure: 'treasure ship', escort: 'convoy escort' }[n.kind];
     const label = safe ? 'Safe waters' : hostile ? 'Attack' : lawful ? 'Attack (licensed)' : 'Attack (piracy)';
-    html = `<div class="ctx-row"><span class="flag" style="${flagCss(n.f)}"></span><div><b>${FACTIONS[n.f].adj} ${kindName}</b><small>${nd.name} · about ${nd.guns} guns · ${n.crew > nd.crewMax * 0.7 ? 'well manned' : n.crew > nd.crewMin ? 'manned' : 'thinly manned'}${hostile ? ' · hostile' : ''}${!lawful && !safe ? ' · attacking earns a bounty' : ''}</small></div>
-      <button class="btn ${hostile || lawful ? 'danger' : ''}" data-act="attack" ${safe ? 'disabled' : ''}>${label}</button></div>`;
+    html = `<div class="ctx-row"><span class="flag" style="${flagCss(n.f)}"></span><div><b>${n.kind === 'rival' ? esc(rivalById(n.rid).name) : `${FACTIONS[n.f].adj} ${kindName}`}</b><small>${nd.name} · about ${nd.guns} guns · ${n.crew > nd.crewMax * 0.7 ? 'well manned' : n.crew > nd.crewMin ? 'manned' : 'thinly manned'}${hostile ? ' · hostile' : ''}${!lawful && !safe ? ' · attacking earns a bounty' : ''}</small></div>
+      ${canHail(n) ? '<button class="btn" data-act="hail">Hail <kbd>H</kbd></button>' : ''}<button class="btn ${hostile || lawful ? 'danger' : ''}" data-act="attack" ${safe ? 'disabled' : ''}>${label}</button></div>`;
+  }
+  if (!html && S.race && !S.docked && !modalOpen) {
+    const rc = S.race, rp = portById(rc.port), rn = S.npcs.find(x => x.rid === rc.rid);
+    html = `<div class="ctx-row"><span class="flag" style="${flagCss(rp.f)}"></span><div><b>Race to ${esc(rp.name)}</b><small>You: ${Math.round(Math.hypot(rp.wx - S.x, rp.wy - S.y))} nm to run · ${esc(rivalById(rc.rid).name)}: ${rn ? Math.round(Math.hypot(rp.wx - rn.x, rp.wy - rn.y)) : '?'} nm · ${fmt(rc.wager)} ducats</small></div></div>`;
   }
   if (card.dataset.html !== html) { card.innerHTML = html; card.dataset.html = html; card.hidden = !html; }
 }
@@ -4537,6 +4764,7 @@ var voyageMute = null;
 function setTheatre(th) {
   S.theatre = th; S.npcs = []; S.route = null; S.routeDest = null; S.target = null;
   pathCache.clear(); ensureRelief(th);
+  S.wx = []; S.race = null; S.stats[th] = 1;
 }
 function startVoyage(vid, dest) {
   const v = VOYAGES.find(x => x.id === vid), q = portById(dest), from = portById(S.docked);
@@ -4724,6 +4952,749 @@ function renderBattle() {
 }
 
 // ----- captain's log -----
+// =====================================================================
+// THE LIVING SEA: weather you can see, night and day, adventures at sea,
+// hailing other ships, rival captains, and the book of deeds.
+// =====================================================================
+
+// ---------- 1. weather cells, fog and night ----------
+function wxSpawn(k) {
+  const T = TH(), mo = curDate().getUTCMonth();
+  for (let tries = 0; tries < 24; tries++) {
+    const a = rand(0, TAU), d = rand(170, 620);
+    const x = S.x + Math.sin(a) * d, y = S.y - Math.cos(a) * d;
+    if (x < T.ox + 30 || x > T.ox + T.w - 30 || y < T.oy + 30 || y > T.oy + T.h - 30 || isLand(x, y)) continue;
+    const hur = k === 'squall' && curTh() === 'carib' && mo >= 7 && mo <= 9 && Math.random() < 0.35;
+    S.wx.push({ k, x, y, r: k === 'fog' ? rand(45, 85) : hur ? rand(85, 120) : rand(34, 62), life: rand(50, 130), hur: hur ? 1 : 0, seed: Math.floor(Math.random() * 1000) });
+    return;
+  }
+}
+const wxAt = (x, y, k) => (S.wx || []).find(c => c.k === k && Math.hypot(c.x - x, c.y - y) < c.r);
+const inFog = () => !S.docked && !!wxAt(S.x, S.y, 'fog');
+// 0 at noon, 1 in the dead of night
+const nightK = () => S ? clamp((Math.cos((S.t % 24) / 24 * TAU) - 0.1) / 0.6, 0, 1) : 0;
+function updateWeather(dtH) {
+  S.wx ??= [];
+  const wd = windTo(), mo = curDate().getUTCMonth(), th = curTh();
+  for (let i = S.wx.length - 1; i >= 0; i--) {
+    const c = S.wx[i], v = c.k === 'fog' ? 1.2 : c.hur ? 6 : 9;
+    c.x += Math.sin(wd) * v * dtH; c.y -= Math.cos(wd) * v * dtH; c.life -= dtH;
+    if (c.life <= 0 || Math.hypot(c.x - S.x, c.y - S.y) > 900) S.wx.splice(i, 1);
+  }
+  const wantSq = 4 + (th === 'carib' && mo >= 7 && mo <= 9 ? 2 : 0) + (th === 'indian' && mo >= 5 && mo <= 7 ? 3 : 0) + (th === 'med' && (mo >= 10 || mo <= 1) ? 2 : 0);
+  if (S.wx.filter(c => c.k === 'squall').length < wantSq && Math.random() < dtH * 0.2) wxSpawn('squall');
+  if (S.wx.filter(c => c.k === 'fog').length < 3 && Math.random() < dtH * 0.12) wxSpawn('fog');
+  if (S.docked) { S.inSquall = 0; S.inFogNow = 0; return; }
+  // squalls: run under bare poles to spare the hull
+  const sq = wxAt(S.x, S.y, 'squall'), def = shipDef();
+  if (sq && !inSafeZone(S.x, S.y)) {
+    if (!S.inSquall) {
+      S.inSquall = 1;
+      toast(sq.hur ? 'Hurricane' : 'Squall', sq.hur ? 'The sea turns white. Furl everything and pray: full sail will tear the ship apart.' : 'Rain and a screaming wind. Furl your sails to spare the hull, or carry on and take the damage.', 'bad');
+    }
+    const shelter = (th === 'indian' && hasLt('mappila')) || (inBlackSea(S.x, S.y) && hasLt('laz'));
+    const rate = (sq.hur ? 2.4 : 0.8) * def.hull / 80 * (1 - 0.06 * S.skills.nav) * (hasLt('pilot') ? 0.5 : 1) * (S.sail === 2 ? 1.6 : S.sail === 0 ? 0.35 : 1) * (shelter ? 0 : 1);
+    S.sqDmg = (S.sqDmg || 0) + rate * dtH;
+    while (S.sqDmg >= 1) { S.sqDmg -= 1; S.ship.hull = Math.max(1, S.ship.hull - 1); }
+    S.wind.str = Math.max(S.wind.str, sq.hur ? 30 : 24); S.wind.tstr = Math.max(S.wind.tstr, 22);
+    S.morale = clamp(S.morale - dtH * 0.25, 0, 100);
+  } else if (S.inSquall) {
+    S.inSquall = 0; S.stats.squalls = (S.stats.squalls || 0) + 1; gainXP(12);
+    toast('Through the squall', `The sky clears. Hull ${S.ship.hull}/${def.hull}.`);
+  }
+  const fog = inFog();
+  if (fog && !S.inFogNow) toast('Fog bank', 'You can see a cable’s length, no more. Nobody can see you either.');
+  S.inFogNow = fog ? 1 : 0;
+}
+function drawWeather(sx, sy, z, now, onScreen) {
+  for (const c of S.wx || []) {
+    if (!onScreen(c.x, c.y, c.r * z + 60)) continue;
+    const X = sx(c.x), Y = sy(c.y), R = c.r * z;
+    for (let k = 0; k < 6; k++) {
+      const a = c.seed + k * 1.7, bx = X + Math.cos(a) * R * 0.42 * (k ? 1 : 0), by = Y + Math.sin(a * 1.3) * R * 0.36 * (k ? 1 : 0), br = R * (k ? 0.62 : 0.9);
+      const g = ctx.createRadialGradient(bx, by, br * 0.1, bx, by, br);
+      if (c.k === 'fog') { g.addColorStop(0, 'rgba(226,228,220,0.34)'); g.addColorStop(1, 'rgba(226,228,220,0)'); }
+      else { g.addColorStop(0, c.hur ? 'rgba(8,11,18,0.62)' : 'rgba(16,21,30,0.5)'); g.addColorStop(1, 'rgba(22,28,38,0)'); }
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); ctx.fill();
+    }
+    if (c.k === 'squall') {
+      ctx.strokeStyle = 'rgba(190,205,215,0.28)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let k = 0; k < 26; k++) {
+        const a = c.seed * 7 + k * 2.399, rr = R * 0.75 * Math.sqrt((k + 0.5) / 26), ph = ((now / 420 + k * 0.37) % 1);
+        const px = X + Math.cos(a) * rr - ph * 9, py = Y + Math.sin(a) * rr + ph * 18;
+        ctx.moveTo(px, py); ctx.lineTo(px - 3, py + 7);
+      }
+      ctx.stroke();
+      if (Math.sin(now / 137 + c.seed) > 0.96 && Math.sin(now / 2300 + c.seed * 3) > 0.9) { ctx.fillStyle = 'rgba(235,240,255,0.22)'; ctx.beginPath(); ctx.arc(X, Y, R * 0.8, 0, TAU); ctx.fill(); }
+    }
+  }
+}
+function drawNight(AX, AY, W, H, sx, sy, z, onScreen) {
+  const k = nightK() * (timeScale > 1 ? 0.45 : 1);
+  if (k <= 0.01) return;
+  const g = ctx.createRadialGradient(AX, AY, 30, AX, AY, Math.max(W, H) * 0.7);
+  g.addColorStop(0, `rgba(10,16,44,${0.14 * k})`); g.addColorStop(0.25, `rgba(8,14,40,${0.34 * k})`); g.addColorStop(1, `rgba(4,8,28,${0.56 * k})`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // harbour lights
+  for (const p of TPORTS()) {
+    if (!S.discovered[p.id] || p.site && p.f === 'none' || !onScreen(p.x, p.y)) continue;
+    const X = sx(p.x), Y = sy(p.y), r = clamp(z * 9, 7, 22);
+    const lg = ctx.createRadialGradient(X, Y, 0, X, Y, r);
+    lg.addColorStop(0, `rgba(255,205,120,${0.75 * k})`); lg.addColorStop(1, 'rgba(255,190,90,0)');
+    ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(X, Y, r, 0, TAU); ctx.fill();
+  }
+  // your own stern lantern
+  const lg = ctx.createRadialGradient(AX, AY, 0, AX, AY, 26);
+  lg.addColorStop(0, `rgba(255,214,140,${0.5 * k})`); lg.addColorStop(1, 'rgba(255,200,110,0)');
+  ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(AX, AY, 26, 0, TAU); ctx.fill();
+}
+
+// ---------- shared: the event card ----------
+let EV = null;
+// apply gains and losses, and return them as chips for the result line
+function gain(o) {
+  const out = [], def = shipDef();
+  if (o.gold) { const v = o.gold < 0 ? -Math.min(S.gold, -o.gold) : Math.round(o.gold); S.gold += v; if (v) out.push([v, 'ducats']); }
+  if (o.crew) { const v = clamp(S.crew + o.crew, 1, def.crewMax) - S.crew; S.crew += v; if (v) out.push([v, 'crew']); }
+  if (o.prov) { const v = Math.max(-S.provisions, o.prov); S.provisions += v; if (Math.round(v)) out.push([Math.round(v), 'provisions']); }
+  if (o.morale) { const v = Math.round(clamp(S.morale + o.morale, 0, 100) - S.morale); S.morale += v; if (v) out.push([v, 'morale']); }
+  if (o.hull) { const v = clamp(S.ship.hull + o.hull, 1, def.hull) - S.ship.hull; S.ship.hull += v; if (v) out.push([v, 'hull']); }
+  if (o.xp) { gainXP(o.xp); out.push([o.xp, 'experience']); }
+  if (o.goods) for (const g in o.goods) { const q = Math.min(o.goods[g], holdFree()); if (q > 0) { S.cargo[g] = (S.cargo[g] || 0) + q; S.basis[g] = S.basis[g] ?? Math.round(GOODS[g].base * 0.5); out.push([q, GOODS[g].name]); } }
+  if (o.rep) { addRep(o.rep[0], o.rep[1]); out.push([o.rep[1], 'standing', FACTIONS[o.rep[0]].name]); }
+  return out;
+}
+const res = (text, o) => ({ text, fx: o ? gain(o) : [] });
+function showEvent(ev) { EV = ev; openModal('event'); renderEvent(); }
+function renderEvent() {
+  if (!EV) return;
+  $('#evTitle').textContent = EV.title; $('#evSub').textContent = EV.sub || '';
+  const lines = t => String(t).split('\n').map(l => `<p>${esc(l)}</p>`).join('');
+  let html = `<div class="evtext">${lines(EV.text)}</div>`;
+  if (EV.result) {
+    html += `<div class="evres">${lines(EV.result.text)}${EV.result.fx.length ? `<div class="fxchips">${EV.result.fx.map(([v, what, who]) => `<span class="fxchip ${v > 0 ? 'up' : 'down'}"><b>${v > 0 ? '+' : '−'}${fmt(Math.abs(v))}</b> <i>${esc(what)}</i>${who ? ` <i>${esc(who)}</i>` : ''}</span>`).join('')}</div>` : ''}</div>
+      <div class="row-btns"><button class="btn primary" data-act="evclose">Sail on</button></div>`;
+  } else {
+    html += `<div class="evchoices">${EV.choices.map((c, i) => `<button class="btn evch" data-ev="${i}" ${c.off ? 'disabled' : ''}><b>${esc(c.label)}</b>${c.hint ? `<small>${esc(c.hint)}</small>` : ''}</button>`).join('')}</div>`;
+  }
+  $('#evBody').innerHTML = html;
+}
+function chooseEvent(i) {
+  if (!EV || EV.result) return;
+  const c = EV.choices[i]; if (!c || c.off) return;
+  const r = c.run();
+  if (r === false) { EV = null; return; }            // the choice opened something else (a battle, a course)
+  if (r == null) { EV = null; closeModal(); updateHUD(); return; }
+  EV.result = r; renderEvent(); checkDeeds(); updateHUD(); save();
+}
+
+// ---------- 2. adventures at sea ----------
+const nearestPortTo = (x, y) => TPORTS().filter(p => !p.site).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+const friendlyNation = () => pick(NATIONS.filter(f => inThFaction(f) && !isHostile(f) && TPORTS().some(p => p.f === f))) || TPORTS()[0].f;
+function placeTreasure() {
+  const th = curTh();
+  const spots = GRAPH.nodes.filter(n => !n.port && theatreAtX(n.x) === th && !inRiverChannel(n.x, n.y) && Math.hypot(n.x - S.x, n.y - S.y) > 180 && Math.hypot(n.x - S.x, n.y - S.y) < 800);
+  if (!spots.length) return false;
+  const n = pick(spots);
+  S.treasure = { x: n.x, y: n.y, th, gold: 400 + S.level * 180 + randi(0, 400) };
+  return true;
+}
+const ENCOUNTERS = [
+  { id: 'raft', make: () => ({ title: 'Men on a raft', text: 'The lookout sights a raft with half a dozen men waving a shirt. They have been adrift for days.', choices: [
+    { label: 'Take them aboard', hint: 'More hands, more mouths', run: () => { const n = randi(3, 6); return res('They swear to serve you. One of them kisses the deck.', { crew: n, prov: -n * 2, morale: 5 }); } },
+    { label: 'Give them water and a course for land', run: () => res('They bless you and row for the coast.', { prov: -4, morale: 2 }) },
+    { label: 'Sail on', run: () => res('The crew watch the raft fall astern and say nothing.', { morale: -6 }) }] }) },
+  { id: 'derelict', make: () => ({ title: 'A ship adrift', text: 'A ship drifts with her sails in rags and nobody at the helm.', choices: [
+    { label: 'Board her', hint: 'She may be rich, or cursed', run: () => { const r = Math.random();
+      if (r < 0.5) return res('Her crew are gone, but the strongbox and part of the cargo are still aboard.', { gold: randi(80, 260) + S.level * 40, goods: { [pick(GOOD_KEYS)]: randi(4, 12) }, xp: 15 });
+      if (r < 0.75 && !hasLt('surgeon')) return res('Below decks the crew lie dead of fever. Your boarders bring it back with them.', { crew: -randi(2, 5), morale: -6 });
+      return res('She has been stripped to the ribs. Someone was here before you.', { xp: 8 }); } },
+    { label: 'Tow her in for salvage', hint: 'Slow work, sure money', off: S.crew < shipDef().crewMin + 4, run: () => res('The hulk follows you like a sulking dog. A breaker buys her timbers at the next harbour.', { gold: 180 + S.level * 45, morale: -4 }) },
+    { label: 'Leave her', run: () => res('You give her a wide berth. Sailors do not like a ship with no one aboard.') }] }) },
+  { id: 'thirst', make: () => { const f = friendlyNation(); return { title: 'A signal for water', text: 'A becalmed merchantman signals that her water casks are foul. Her master offers anything for a few barrels.', sub: FACTIONS[f].name, choices: [
+    { label: 'Give them water and biscuit', hint: 'Costs 20 provisions', off: S.provisions < 30, run: () => res('Her master will speak well of you in every port of his nation.', { prov: -20, rep: [f, 6], morale: 3 }) },
+    { label: 'Sell it at a hard price', off: S.provisions < 30, run: () => res('He pays, and remembers your face.', { prov: -20, gold: 140 + S.level * 20, rep: [f, -2] }) },
+    { label: 'Sail on', run: () => res('You have none to spare. That is what you tell yourself.', { morale: -2 }) }] }; } },
+  { id: 'bottle', ok: () => !S.treasure, make: () => ({ title: 'A bottle in the sea', text: 'A sealed bottle bobs alongside. Inside is a scrap of sailcloth with a reef drawn in charcoal, and a cross.', choices: [
+    { label: 'Keep the map', run: () => placeTreasure() ? res('Your pilot knows that reef. The cross is marked on your chart: sail there to dig.', { xp: 10 }) : res('Nobody aboard can make sense of the drawing.') },
+    { label: 'Throw it back', run: () => res('Some other fool can chase it.') }] }) },
+  { id: 'dolphins', make: () => ({ title: 'Dolphins under the bow', text: 'A school of dolphins runs with the ship, and beyond them the sea is boiling with birds.', choices: [
+    { label: 'Follow the birds', run: () => Math.random() < 0.6 ? res('A shoal of tunny. The crew fish until their arms ache and the decks run silver.', { prov: randi(10, 24), morale: 4 }) : res('The birds scatter and the sea is empty. You have lost half a day.', { morale: -1 }) },
+    { label: 'Hold your course', run: () => res('A good omen, the old hands say.', { morale: 3 }) }] }) },
+  { id: 'fishers', make: () => ({ title: 'The fishing fleet', text: 'A dozen fishing boats work a bank, lanterns swinging. Their master rows across to see who you are.', choices: [
+    { label: 'Buy their catch', hint: '30 ducats', off: S.gold < 30, run: () => res('Fresh fish for a week, and salt cod for after.', { gold: -30, prov: 25, morale: 2 }) },
+    { label: 'Ask what they have seen', run: () => { const p = TPORTS().filter(q => !S.discovered[q.id] && !q.site).sort((a, b) => Math.hypot(a.x - S.x, a.y - S.y) - Math.hypot(b.x - S.x, b.y - S.y))[0];
+      if (p) { S.discovered[p.id] = true; return { text: `They draw the coast in spilt wine and show you where ${p.name} lies. It is marked on your chart.`, fx: gain({ xp: 20 }) }; }
+      S.spotUntil = S.t + 48; return res('They tell you which sails passed and where the raiders wait. For two days your lookouts know where to look.'); } },
+    { label: 'Sail on', run: () => null }] }) },
+  { id: 'passengers', ok: () => !S.passengers, make: () => { const n = randi(4, 9); return { title: 'Stranded travellers', text: 'A boat hails you: pilgrims and a merchant’s widow, abandoned by a captain who took their money. They will pay for passage to any harbour.', choices: [
+    { label: 'Take them aboard', hint: 'Paid when they step ashore', run: () => { S.passengers = { n, pay: n * randi(14, 24) + S.level * 10 }; return res('They settle under an awning aft and pray for fair weather. They will pay at your next harbour.', { prov: -n }); } },
+    { label: 'Refuse', run: () => res('A ship of war is no place for pilgrims.') }] }; } },
+  { id: 'wreckage', make: () => ({ title: 'Wreckage', text: 'Spars, barrels and a hatch cover drift past. A ship went down here not long ago.', choices: [
+    { label: 'Salvage what floats', off: holdFree() < 1, run: () => res('The boats bring back what the sea has not spoiled.', { goods: { [pick(GOOD_KEYS)]: randi(5, 14) }, xp: 8 }) },
+    { label: 'Search for survivors', run: () => Math.random() < 0.5 ? res('You pull men from a floating spar, half dead and wholly grateful.', { crew: randi(1, 3), morale: 6 }) : res('No one. The crew are glad you looked.', { morale: 2 }) }] }) },
+  { id: 'quarrel', make: () => ({ title: 'Knives on the foredeck', text: 'Two watches come to blows over a game of dice. A knife is out.', choices: [
+    { label: 'Flog the ringleaders', run: () => res('Order returns, sullenly.', { morale: -5, xp: 5 }) },
+    { label: 'Issue wine and make them shake hands', run: () => res('By the second cup they are singing together.', { prov: -5, morale: 6 }) },
+    { label: 'Talk them down yourself', hint: 'Needs Leadership', run: () => S.skills.lead >= 3 || Math.random() < 0.15 + S.skills.lead * 0.15 ? res('You walk between the knives and they drop their eyes. They will follow you anywhere after this.', { morale: 10, xp: 15 }) : res('They do not listen. A man is stabbed before the mates break it up.', { crew: -1, morale: -4 }) }] }) },
+  { id: 'elmo', make: () => ({ title: 'St Elmo’s fire', text: 'Blue fire burns on the mastheads. The crew fall to their knees.', choices: [
+    { label: 'Lead a prayer', run: () => res('The fire fades at dawn. The men are quiet and steady.', { morale: 5 }) },
+    { label: 'Tell them it means a fair wind', run: () => Math.random() < 0.55 ? res('The wind holds fair all the next day, and they believe you.', { morale: 9 }) : res('The wind dies at sunrise. They remember what you said.', { morale: -7 }) }] }) },
+  { id: 'yellow', make: () => ({ title: 'The yellow flag', text: 'A ship under a yellow flag begs for food. There is sickness aboard, and no harbour will let her in.', choices: [
+    { label: 'Send a boat with provisions', off: S.provisions < 25, run: () => Math.random() < 0.3 && !hasLt('surgeon') ? res('The boat’s crew bring the sickness back with them.', { prov: -15, crew: -randi(1, 4) }) : res('They lower a basket and weep. Your men row back unharmed.', { prov: -15, morale: 5, xp: 10 }) },
+    { label: 'Sell from a distance', hint: 'Coins passed through vinegar', off: S.provisions < 25, run: () => res('They pay three times the price and thank you for it.', { prov: -15, gold: 200 }) },
+    { label: 'Keep to windward and pass', run: () => res('Nobody speaks until she is hull down.') }] }) },
+  { id: 'smuggler', make: () => { const g = pick(GOOD_KEYS), q = Math.min(holdFree(), randi(10, 25)), cost = Math.round(GOODS[g].base * 0.5 * q); return { title: 'A lugger with no flag', text: 'A small craft runs alongside at dusk. Her master has goods to sell at half their price, no questions asked.', sub: `${GOODS[g].name} × ${q}`, choices: [
+    { label: 'Buy the lot', hint: `${fmt(cost)} ducats`, off: q < 1 || S.gold < cost, run: () => res('The bales come over the rail in the dark.', { gold: -cost, goods: { [g]: q } }) },
+    { label: 'Decline', run: () => null }] }; } },
+  { id: 'lost', make: () => { const f = friendlyNation(); return { title: 'A ship that has lost her reckoning', text: 'A merchantman heaves to and her master asks, red-faced, where on God’s sea he is.', sub: FACTIONS[f].name, choices: [
+    { label: 'Give him his position', hint: 'Needs Navigation', run: () => S.skills.nav >= 2 || Math.random() < 0.5 ? res('He checks it against the stars that night and sends over a purse.', { gold: 60 + S.level * 15, rep: [f, 3] }) : res('You are thirty leagues out yourself. He will find that out.', { rep: [f, -3] }) },
+    { label: 'Sell him a copy of your chart', run: () => res('He pays without haggling.', { gold: 120 }) }] }; } },
+];
+function rollEncounter() {
+  if (S.docked || voyageMute || B || modalOpen || S.race || !S.sail || inSafeZone(S.x, S.y)) return;
+  if (dayIndex() < (S.nextEnc || 0) || Math.random() > 0.12) return;
+  const pool = ENCOUNTERS.filter(e => (!e.ok || e.ok()) && e.id !== S.lastEnc);
+  const e = pick(pool); S.lastEnc = e.id; S.nextEnc = dayIndex() + randi(14, 22);
+  S.stats.enc = (S.stats.enc || 0) + 1;
+  showEvent(e.make());
+}
+function checkTreasure() {
+  const t = S.treasure;
+  if (!t || t.th !== curTh() || S.docked || Math.hypot(t.x - S.x, t.y - S.y) > 9) return;
+  S.treasure = null; S.stats.treasure = (S.stats.treasure || 0) + 1;
+  S.sail = 0;
+  showEvent({ title: 'X marks the spot', text: 'The reef is where the charcoal said. At low water the boats find an iron-bound chest wedged in the coral.', result: res('The lock gives at the third blow.', { gold: t.gold, xp: 60, morale: 12 }) });
+  checkDeeds(); save();
+}
+
+// ---------- 3. hailing other ships ----------
+const canHail = n => n && !n.hailed && !huntsYou(n) && (n.kind === 'merchant' || n.kind === 'patrol' || n.kind === 'corsair' || n.kind === 'rival');
+function hailShip(n) {
+  if (!canHail(n)) return;
+  if (n.kind === 'rival') return rivalEvent(n);
+  n.hailed = 1;
+  const nd = SHIPS[n.type], adj = FACTIONS[n.f].adj, sub = `${adj} ${nd.name}`;
+  const leave = { label: 'Wish them fair winds', run: () => null };
+  if (n.kind === 'merchant') {
+    showEvent({ title: 'A merchantman heaves to', sub, text: 'Her master comes to the rail with a speaking trumpet. He is wary, but glad of company.', choices: [
+      { label: 'Ask for news', run: () => ({ text: makeRumour(nearestPortTo(S.x, S.y)), fx: [] }) },
+      { label: 'Buy provisions', hint: '20 days for 50 ducats', off: S.gold < 50, run: () => res('Casks of biscuit and salt pork swing across on a whip.', { gold: -50, prov: 20 }) },
+      { label: 'Demand tribute', hint: 'Piracy, if he pays or if he fights', off: !!inSafeZone(S.x, S.y), run: () => {
+        const mine = (shipDef().guns + escortGuns()) * (0.6 + 0.4 * crewFactor()) + S.crew / 12, his = nd.guns + n.crew / 12;
+        if (mine > his * 1.5) { const take = Math.round(n.gold * 0.35); n.gold -= take; addBounty(n.f, 45); return res('He counts your guns, then counts out his silver. His owners will hear of it.', { gold: take, rep: [n.f, -8], morale: 3 }); }
+        closeModal(); startBattle(n, true); return false; } },
+      leave] });
+  } else if (n.kind === 'patrol') {
+    showEvent({ title: 'A warship answers your hail', sub, text: 'Her captain looks over your ship without hurry, then touches his hat.', choices: [
+      { label: 'Ask where the raiders are', run: () => { S.spotUntil = S.t + 72; return res('He marks them for you on the chart. For three days your lookouts will pick out raiders far beyond the horizon.'); } },
+      { label: 'Buy biscuit from his stores', hint: '20 days for 60 ducats', off: S.gold < 60, run: () => res('His purser is happy to oblige, at a price.', { gold: -60, prov: 20 }) },
+      leave] });
+  } else {
+    const g = pick(GOOD_KEYS), q = Math.min(holdFree(), randi(8, 20)), cost = Math.round(GOODS[g].base * 0.55 * q);
+    showEvent({ title: 'A raider lies to under your lee', sub, text: 'She is no enemy of yours today. Her captain grins and asks if you are buying.', choices: [
+      { label: 'Buy his plunder', hint: `${GOODS[g].name} × ${q} · ${fmt(cost)} ducats`, off: q < 1 || S.gold < cost, run: () => res('Nobody asks where it came from.', { gold: -cost, goods: { [g]: q } }) },
+      { label: 'Ask what he has seen', run: () => { S.spotUntil = S.t + 48; return res('He tells you which warships are out and where. For two days your lookouts know where to look.'); } },
+      leave] });
+  }
+}
+
+// ---------- 4. rival captains ----------
+const RIVALS = [
+  { id: 'kara',    name: 'Kara Mehmed Reis', th: 'med',    f: 'barbary',  types: ['fusta', 'galiot', 'galley'],     style: 'corsair',  blurb: 'An Albanian renegade out of Algiers who boasts that he has never lost a chase.' },
+  { id: 'fieschi', name: 'Lorenzo Fieschi',  th: 'med',    f: 'genoa',    types: ['tartane', 'bertone', 'galleon'], style: 'merchant', blurb: 'A Genoese shipowner who buys cheap wherever you meant to.' },
+  { id: 'rieux',   name: 'Antoine de Rieux', th: 'med',    f: 'knights',  types: ['galiot', 'galley', 'galley'],    style: 'corsair',  blurb: 'A Knight of St John more interested in prizes than in prayers.' },
+  { id: 'valier',  name: 'Nicolas Valier',   th: 'carib',  f: 'huguenot', types: ['tartane', 'bertone', 'galleon'], style: 'corsair',  blurb: 'A Dieppe privateer who hunts the silver ships and laughs at Seville.' },
+  { id: 'ibrahim', name: 'Nakhuda Ibrahim',  th: 'indian', f: 'gujarat',  types: ['dhow', 'dhow', 'bertone'],       style: 'merchant', blurb: 'A Surat shipmaster who knows every monsoon by name.' },
+];
+const rivalById = id => RIVALS.find(r => r.id === id);
+const rivalSt = id => (S.rivals[id] ??= { rel: 0, lvl: 0, beat: 0, lostTo: 0, won: 0, lost: 0, rest: 0, bottle: -99, met: 0 });
+const rivalMood = v => v <= -40 ? 'Sworn enemy' : v <= -10 ? 'Cold' : v >= 40 ? 'Friend' : v >= 15 ? 'Respectful' : 'Rival';
+function spawnRival(r) {
+  const st = rivalSt(r.id), type = r.types[Math.min(st.lvl, r.types.length - 1)], def = SHIPS[type];
+  const ports = TPORTS().filter(p => !p.site && !p.river && p.node != null);
+  const from = pick(ports), to = pick(ports.filter(p => p !== from));
+  const pts = nodePath(from.node, to.node) || [];
+  if (pts.length < 2) return;
+  const k = randi(0, pts.length - 2);
+  S.npcs.push({ id: S.nextNpcId++, kind: 'rival', rid: r.id, f: r.f, type, hull: def.hull, crew: Math.round(def.crewMin + (def.crewMax - def.crewMin) * 0.8),
+    gold: 500 + st.lvl * 700 + S.level * 60, cargo: r.style === 'merchant' ? { [pick(GOOD_KEYS)]: randi(10, 30) } : {}, x: pts[k][0], y: pts[k][1], heading: 0, pts: pts.slice(k + 1), cooldown: 0 });
+}
+function tickRivals() {
+  for (const r of RIVALS) if (r.th === curTh() && !S.npcs.some(n => n.rid === r.id) && dayIndex() >= rivalSt(r.id).rest && Math.random() < 0.012) spawnRival(r);
+}
+function rivalNextLeg(n) {
+  const ports = TPORTS().filter(p => !p.site && !p.river && p.node != null);
+  n.pts = nodePath(nearestNode(n.x, n.y), pick(ports).node) || [];
+  n.hailed = 0;
+  return n.pts.length > 0;
+}
+function rivalNews() {
+  for (const r of RIVALS) {
+    if (dayIndex() < rivalSt(r.id).rest || Math.random() > 0.035) continue;
+    const reg = pick(REGIONS.filter(x => (x.th || 'med') === r.th));
+    const tpl = pick(r.style === 'merchant' ? [1, 2] : [0, 2]);
+    const ev = [
+      { title: `${r.name} takes a rich prize`, body: 'He grows bolder every month, and his crew richer.' },
+      { title: `${r.name} corners a market`, body: 'He bought a whole harvest and sold it at twice the price.' },
+      { title: `${r.name} asks after you`, body: 'He has been heard in the taverns saying that he will outsail you.' }][tpl];
+    S.events.push({ k: 'rival', region: reg.id, start: dayIndex(), until: dayIndex() + 30, risk: 0, ...ev });
+  }
+}
+function raceTarget(n) {
+  const here = nearestNode(S.x, S.y);
+  const c = TPORTS().filter(p => !p.site && !p.river && S.discovered[p.id] && harbourOpen(p).ok).map(p => [p, Math.hypot(p.x - S.x, p.y - S.y)]).filter(([, d]) => d > 110 && d < 420);
+  return c.length ? pick(c)[0] : null;
+}
+function rivalEvent(n) {
+  const r = rivalById(n.rid), st = rivalSt(r.id); st.met = 1;
+  const dest = raceTarget(n), wager = Math.min(S.gold, 150 + S.level * 60), safe = !!inSafeZone(S.x, S.y), day = dayIndex();
+  showEvent({ title: r.name, sub: `${FACTIONS[r.f].adj} ${SHIPS[n.type].name} · ${rivalMood(st.rel)}`, text: `${r.blurb}\nHe brings his ship within hail and waits to hear what you want.`, choices: [
+    { label: dest ? `Race him to ${dest.name}` : 'Race him', hint: dest ? `Wager ${fmt(wager)} ducats. First into the roads wins.` : 'No harbour in reach to race for', off: !dest || wager < 50 || !!S.race, run: () => {
+      S.race = { rid: r.id, port: dest.id, wager, t0: S.t }; n.racing = 1; n.hailed = 1;
+      n.pts = nodePath(nearestNode(n.x, n.y), dest.node) || [];
+      closeModal(); setCourse(PORTS.indexOf(dest)); S.sail = 2;
+      toast(`Race to ${dest.name}`, `${r.name} is already making sail. The purse is ${fmt(wager)} ducats, for the first ship into the roads.`, 'gold');
+      return false; } },
+    { label: 'Challenge him to a duel', hint: 'Ship against ship. No law is broken and no bounty raised.', off: safe, run: () => { n.duel = 1; closeModal(); startBattle(n, true); return false; } },
+    { label: 'Share a bottle', hint: '40 ducats. He may tell you something useful.', off: S.gold < 40 || day - st.bottle < 20, run: () => {
+      st.bottle = day; st.rel = clamp(st.rel + 10, -100, 100); n.hailed = 1; S.gold -= 40;
+      return { text: `He comes aboard and drinks your wine. ${makeRumour(nearestPortTo(S.x, S.y))}`, fx: [[-40, 'ducats']] }; } },
+    { label: 'Sail on', run: () => null }] });
+}
+function tickRace() {
+  const rc = S.race; if (!rc) return;
+  const p = portById(rc.port), n = S.npcs.find(x => x.rid === rc.rid), r = rivalById(rc.rid), st = rivalSt(rc.rid);
+  const end = (won, why) => {
+    S.race = null; if (n) { n.racing = 0; n.cooldown = 24; }
+    if (won === true) { S.gold += rc.wager; st.won++; st.rel = clamp(st.rel + 8, -100, 100); S.stats.racesWon = (S.stats.racesWon || 0) + 1; gainXP(60); S.morale = clamp(S.morale + 10, 0, 100); toast('You win the race', `${r.name} dips his flag and pays ${fmt(rc.wager)} ducats.`, 'gold'); }
+    else if (won === false) { const pay = Math.min(S.gold, rc.wager); S.gold -= pay; st.lost++; st.rel = clamp(st.rel + 3, -100, 100); S.morale = clamp(S.morale - 5, 0, 100); toast('You lose the race', `${r.name} is at anchor before you. You pay ${fmt(pay)} ducats.`, 'bad'); }
+    else toast('The race is off', why);
+    checkDeeds(); save();
+  };
+  if (!n) return end(null, `${r.name} has left these waters.`);
+  if (curTh() !== (p.th || 'med')) return end(null, 'You have left these waters.');
+  if (S.docked === p.id || Math.hypot(p.wx - S.x, p.wy - S.y) < 14) return end(true);
+  if (!n.pts.length || Math.hypot(p.wx - n.x, p.wy - n.y) < 12) return end(false);
+}
+// after a fight with a rival
+function rivalAfterBattle(n, result) {
+  const r = rivalById(n.rid), st = rivalSt(r.id);
+  if (S.race && S.race.rid === r.id) S.race = null;
+  if (result === 'captured' || result === 'sunk') {
+    st.beat++; st.lvl++; st.rest = dayIndex() + 45; st.rel = clamp(st.rel - 25, -100, 100);
+    if (n.duel) S.stats.duels = (S.stats.duels || 0) + 1;
+    B.loot.push(`${r.name} strikes his colours. He will be back, with a better ship and a longer memory.`);
+  } else if (result === 'lost') { st.lostTo++; st.rel = clamp(st.rel + 6, -100, 100); B.loot.push(`${r.name} drinks your health with your own wine.`); }
+  n.duel = 0;
+}
+function rivalsHTML() {
+  const list = RIVALS.filter(r => S.rivals[r.id] && S.rivals[r.id].met);
+  if (!list.length) return '<p class="mute">You have crossed no captain worth the name yet. They sail every sea; hail one when you meet him.</p>';
+  return list.map(r => { const st = rivalSt(r.id), resting = dayIndex() < st.rest;
+    return `<div class="card slim"><b>${esc(r.name)}</b><small>${esc(r.blurb)}</small><small>${rivalMood(st.rel)} · ${SHIPS[r.types[Math.min(st.lvl, r.types.length - 1)]].name} · ${THEATRES[r.th].name}${resting ? ' · refitting' : ''}</small><small>Races ${st.won}–${st.lost} · duels ${st.beat}–${st.lostTo}</small></div>`; }).join('');
+}
+
+// ---------- 5. the book of deeds ----------
+const held = () => S.gold + (S.bank || 0);
+const DEEDS = [
+  ['prize1', 'First blood', 'Take your first prize.', () => S.kills >= 1, 100],
+  ['prize10', 'Scourge of the sea', 'Take 10 prizes.', () => S.kills >= 10, 600],
+  ['prize30', 'Terror of three seas', 'Take 30 prizes.', () => S.kills >= 30, 2000],
+  ['chart20', 'Pilot', 'Chart 20 ports.', () => Object.keys(S.discovered).length >= 20, 200],
+  ['chart50', 'Master pilot', 'Chart 50 ports.', () => Object.keys(S.discovered).length >= 50, 800],
+  ['chartAll', 'The whole portolan', 'Chart every port on all three charts.', () => PORTS.every(p => S.discovered[p.id]), 5000],
+  ['rich1', 'Man of substance', 'Hold 10,000 ducats in purse and bank.', () => held() >= 10000, 300],
+  ['rich2', 'Merchant prince', 'Hold 100,000 ducats in purse and bank.', () => held() >= 100000, 3000],
+  ['indies', 'Across the Ocean Sea', 'Reach the Indies.', () => !!S.stats.carib, 500],
+  ['cape', 'The road to India', 'Reach the Arabian Sea.', () => !!S.stats.indian, 800],
+  ['nile', 'Up the Nile', 'Drop anchor at Cairo.', () => !!S.stats.cairo, 200],
+  ['pontus', 'Beyond the Bosporus', 'Drop anchor in a Black Sea port.', () => !!S.stats.bs, 300],
+  ['north', 'Northern waters', 'Drop anchor in an English port.', () => !!S.stats.eng, 200],
+  ['harbour', 'Lord of a harbour', 'Found a harbour of your own.', () => Object.values(S.posts).some(p => p.kind === 'harbour'), 1000],
+  ['fleet3', 'Commodore', 'Own three ships besides your flagship.', () => S.fleet.length >= 3, 800],
+  ['lts3', 'A full wardroom', 'Sign three lieutenants.', () => S.lts.length >= 3, 400],
+  ['rank4', 'Officer of the crown', 'Reach the fourth rank in any service.', () => !!S.allegiance && rankOf(S.allegiance) >= 3, 600],
+  ['rank8', 'Admiral', 'Reach the highest rank in any service.', () => !!S.allegiance && rankOf(S.allegiance) >= 7, 4000],
+  ['race', 'Fastest keel', 'Win a race against a rival captain.', () => S.stats.racesWon >= 1, 300],
+  ['duel', 'Settled at sea', 'Beat a rival captain in a duel.', () => S.stats.duels >= 1, 600],
+  ['treasure', 'X marks the spot', 'Dig up a buried treasure.', () => S.stats.treasure >= 1, 300],
+  ['squall', 'Weathered', 'Come through five squalls.', () => S.stats.squalls >= 5, 250],
+  ['tales', 'Tales to tell', 'Meet ten adventures at sea.', () => S.stats.enc >= 10, 400],
+  ['ghost', 'Ghost ship', 'Lose a pursuer in the fog.', () => S.stats.fogEscapes >= 1, 250],
+  ['lvl10', 'Old salt', 'Reach level 10.', () => S.level >= 10, 1000],
+];
+function checkDeeds() {
+  if (!S || !S.deeds || voyageMute) return;
+  for (const [id, name, desc, test, reward] of DEEDS) {
+    if (S.deeds[id] != null) continue;
+    let ok = false; try { ok = !!test(); } catch (e) { ok = false; }
+    if (!ok) continue;
+    S.deeds[id] = dayIndex(); S.gold += reward; gainXP(Math.round(reward / 5));
+    toast(`Deed: ${name}`, `${desc}\nYour fame is worth ${fmt(reward)} ducats.`, 'gold');
+  }
+}
+function deedsHTML() {
+  return `<div class="deeds">${DEEDS.map(([id, name, desc, , reward]) => `<div class="deed ${S.deeds[id] != null ? 'done' : ''}"><b>${esc(name)}</b><small>${esc(desc)}</small><em>${fmt(reward)} d</em></div>`).join('')}</div>`;
+}
+const deedsDone = () => DEEDS.filter(d => S.deeds[d[0]] != null).length;
+
+// =====================================================================
+// ON DECK: a 3D view of your ship on the waves. Time slows so that you
+// can steer by hand among other ships, coasts, squalls and fog.
+// Built on three.js r128, loaded only the first time you go on deck.
+// =====================================================================
+const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+const NM = 30;                 // 3D units per nautical mile
+const DECK_TIME = 0.06, DECK_FAST = 0.24;
+const DECK = { on: false, loading: false, cam: 'chase', yaw: 0, pitch: 0.3, zoom: 1, fast: false, ships: new Map(), towns: [], wx: [], org: [0, 0], terrAt: null, th: null, t: 0 };
+const WAVES = [[0.011, 0.6, 0.9, 1.0], [0.019, -0.4, 1.3, 0.55], [0.034, 1.9, 1.9, 0.3], [0.058, -1.3, 2.6, 0.16]]; // [k, direction, speed, weight]
+function waveH(x, z, t, amp) { let h = 0; for (const [k, d, w, a] of WAVES) h += a * Math.sin((x * Math.cos(d) + z * Math.sin(d)) * k + t * w); return h * amp; }
+const d3x = wx => (wx - DECK.org[0]) * NM, d3z = wy => (wy - DECK.org[1]) * NM;
+
+function toggleDeck() {
+  if (DECK.on) return exitDeck();
+  if (!S || B || modalOpen) return;
+  if (!window.THREE) {
+    if (DECK.loading) return;
+    DECK.loading = true; toast('Going on deck', 'The deck view is being rigged. One moment.');
+    const s = document.createElement('script'); s.src = THREE_URL;
+    s.onload = () => { DECK.loading = false; enterDeck(); };
+    s.onerror = () => { DECK.loading = false; toast('No deck view', 'The deck view needs an internet connection the first time, to fetch its 3D library.', 'bad'); };
+    document.head.appendChild(s); return;
+  }
+  enterDeck();
+}
+function enterDeck() {
+  try { if (!DECK.renderer) initDeck(); } catch (e) { console.error(e); toast('No deck view', 'This device cannot draw the 3D deck view.', 'bad'); return; }
+  DECK.on = true; DECK.fast = false; timeScale = DECK_TIME;
+  document.body.classList.add('deck'); $('#deck').hidden = false; $('#deckBar').hidden = false;
+  deckResize(); rebuildPlayerShip(); deckTerrain(true);
+  $('#deckBtn').setAttribute('aria-pressed', 'true');
+  if (!S.flags.deckTip) { S.flags.deckTip = 1; toast('On deck', 'Time runs slowly here. Steer with A and D or the arrows on screen, W and S set the sails. Drag to look around.'); }
+}
+function exitDeck() {
+  DECK.on = false; timeScale = 1;
+  document.body.classList.remove('deck'); $('#deck').hidden = true; $('#deckBar').hidden = true;
+  $('#deckBtn').setAttribute('aria-pressed', 'false'); keys.left = keys.right = false;
+}
+function deckResize() {
+  if (!DECK.renderer) return;
+  const w = innerWidth, h = innerHeight;
+  DECK.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); DECK.renderer.setSize(w, h, false);
+  DECK.camera.aspect = w / h; DECK.camera.updateProjectionMatrix();
+}
+const hexRGB = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; };
+
+function initDeck() {
+  const T3 = THREE, cv = $('#deck');
+  const renderer = new T3.WebGLRenderer({ canvas: cv, antialias: true, powerPreference: 'high-performance' });
+  const scene = new T3.Scene(), camera = new T3.PerspectiveCamera(52, 1, 1, 9000);
+  scene.fog = new T3.FogExp2(0xbfd3dc, 0.00042);
+  const hemi = new T3.HemisphereLight(0xdfeaf2, 0x35506a, 0.75), sun = new T3.DirectionalLight(0xfff1d6, 0.95);
+  scene.add(hemi, sun);
+  // sky dome
+  const sky = new T3.Mesh(new T3.SphereGeometry(8000, 24, 12), new T3.ShaderMaterial({ side: T3.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: new T3.Color() }, hor: { value: new T3.Color() }, sunDir: { value: new T3.Vector3(0, 1, 0) }, sunCol: { value: new T3.Color() }, night: { value: 0 } },
+    vertexShader: 'varying vec3 vd; void main(){ vd = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `varying vec3 vd; uniform vec3 top, hor, sunDir, sunCol; uniform float night;
+      float hash(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7))) * 43758.5453); }
+      void main(){ vec3 d = normalize(vd); float h = clamp(d.y, 0.0, 1.0);
+        vec3 c = mix(hor, top, pow(h, 0.55));
+        float s = max(dot(d, normalize(sunDir)), 0.0);
+        c += sunCol * (pow(s, 600.0) * 2.5 + pow(s, 12.0) * 0.32 + pow(s, 3.0) * 0.12);
+        vec3 g = floor(d * 190.0); float st = step(0.9965, hash(g)) * night * smoothstep(0.02, 0.25, d.y); c += vec3(st);
+        float band = sin(d.x * 5.0 + d.z * 3.0) * 0.5 + 0.5; c = mix(c, c * 1.12 + 0.02, smoothstep(0.08, 0.0, abs(d.y - 0.16 - band * 0.06)) * 0.5);
+        gl_FragColor = vec4(c, 1.0); }` }));
+  scene.add(sky);
+  // the sea
+  const seaGeo = new T3.PlaneGeometry(7000, 7000, 220, 220); seaGeo.rotateX(-Math.PI / 2);
+  const wv = WAVES.map(([k, d, w, a]) => `vec4(${(k * Math.cos(d)).toFixed(5)}, ${(k * Math.sin(d)).toFixed(5)}, ${w.toFixed(2)}, ${a.toFixed(2)})`);
+  const sea = new T3.Mesh(seaGeo, new T3.ShaderMaterial({ fog: false,
+    uniforms: { t: { value: 0 }, amp: { value: 1 }, off: { value: new T3.Vector2() }, sunDir: { value: new T3.Vector3(0, 1, 0) }, sunCol: { value: new T3.Color() }, deep: { value: new T3.Color() }, shal: { value: new T3.Color() }, skyC: { value: new T3.Color() }, fogC: { value: new T3.Color() }, fogD: { value: 0.0004 } },
+    vertexShader: `uniform float t, amp; uniform vec2 off; varying vec3 wp; varying vec3 nrm; varying float hh;
+      void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vec2 p = w.xz + off; float h = 0.0; vec2 dd = vec2(0.0);
+        vec4 W[4]; W[0] = ${wv[0]}; W[1] = ${wv[1]}; W[2] = ${wv[2]}; W[3] = ${wv[3]};
+        float fade = 1.0 - smoothstep(1400.0, 3200.0, length(w.xz - cameraPosition.xz));
+        for (int i = 0; i < 4; i++) { float ph = dot(p, W[i].xy) + t * W[i].z; h += W[i].w * sin(ph); dd += W[i].w * cos(ph) * W[i].xy; }
+        h *= amp * fade; dd *= amp * fade; w.y += h; hh = h / max(amp, 0.001); wp = w.xyz; nrm = normalize(vec3(-dd.x, 1.0, -dd.y));
+        gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `uniform float t, fogD; uniform vec2 off; uniform vec3 sunDir, sunCol, deep, shal, skyC, fogC; varying vec3 wp; varying vec3 nrm; varying float hh;
+      float n2(vec2 p){ return sin(p.x * 1.3 + sin(p.y * 0.7 + t * 0.9)) * sin(p.y * 1.1 - t * 0.7 + sin(p.x * 0.5)); }
+      void main(){ vec2 p = wp.xz + off; float dist = length(wp - cameraPosition);
+        float det = 1.0 - smoothstep(60.0, 900.0, dist);
+        vec3 n = normalize(nrm + det * vec3(n2(p * 0.55) * 0.16 + n2(p * 1.9) * 0.07, 0.0, n2(p.yx * 0.6 + 7.0) * 0.16 + n2(p.yx * 2.1) * 0.07));
+        vec3 v = normalize(cameraPosition - wp);
+        float fr = pow(1.0 - max(dot(n, v), 0.0), 3.0);
+        vec3 c = mix(deep, shal, clamp(hh * 0.35 + 0.42, 0.0, 1.0));
+        c = mix(c, skyC, clamp(fr * 0.5 + 0.05, 0.0, 0.45));
+        vec3 hv = normalize(normalize(sunDir) + v); c += sunCol * pow(max(dot(n, hv), 0.0), 140.0) * 1.3;
+        float foam = smoothstep(0.95, 1.45, hh + n2(p * 0.9) * 0.28) * det; c = mix(c, skyC * 0.5 + vec3(0.5), foam * 0.5);
+        float f = 1.0 - exp(-dist * dist * fogD * fogD); c = mix(c, fogC, clamp(f, 0.0, 1.0));
+        gl_FragColor = vec4(c, 1.0); }` }));
+  scene.add(sea);
+  // rain, seen only inside a squall
+  const rg = new T3.BufferGeometry(), rp = new Float32Array(900 * 6);
+  for (let i = 0; i < 900; i++) { const x = rand(-90, 90), y = rand(0, 70), z = rand(-90, 90); rp.set([x, y, z, x - 1.2, y - 5, z + 0.6], i * 6); }
+  rg.setAttribute('position', new T3.BufferAttribute(rp, 3));
+  const rain = new T3.LineSegments(rg, new T3.LineBasicMaterial({ color: 0xcfdde6, transparent: true, opacity: 0.45, fog: false })); rain.visible = false; scene.add(rain);
+  // wake
+  const wkN = 60, wg = new T3.BufferGeometry();
+  wg.setAttribute('position', new T3.BufferAttribute(new Float32Array(wkN * 2 * 3), 3)); wg.setAttribute('alpha', new T3.BufferAttribute(new Float32Array(wkN * 2), 1));
+  const wi = []; for (let i = 0; i < wkN - 1; i++) wi.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2); wg.setIndex(wi);
+  const wakeM = new T3.Mesh(wg, new T3.ShaderMaterial({ transparent: true, depthWrite: false, side: T3.DoubleSide, fog: false,
+    vertexShader: 'attribute float alpha; varying float a; void main(){ a = alpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    uniforms: { lum: { value: 1 } },
+    fragmentShader: 'uniform float lum; varying float a; void main(){ gl_FragColor = vec4(vec3(0.93,0.97,0.98) * lum, a * 0.55); }' })); wakeM.frustumCulled = false; scene.add(wakeM);
+  Object.assign(DECK, { renderer, scene, camera, hemi, sun, sky, sea, rain, wakeM, wakePts: [], land: null, playerShip: null });
+  // look around by dragging; wheel or pinch to move the camera in and out
+  let drag = null;
+  cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => { if (!drag) return; DECK.yaw -= (e.clientX - drag[0]) * 0.006; DECK.pitch = clamp(DECK.pitch + (e.clientY - drag[1]) * 0.004, 0.06, 1.2); drag = [e.clientX, e.clientY]; });
+  cv.addEventListener('pointerup', () => { drag = null; }); cv.addEventListener('pointercancel', () => { drag = null; });
+  cv.addEventListener('wheel', e => { e.preventDefault(); DECK.zoom = clamp(DECK.zoom * (e.deltaY > 0 ? 1.12 : 0.89), 0.45, 4); }, { passive: false });
+  addEventListener('resize', deckResize);
+}
+
+// ----- ships -----
+const SHIP_PLAN = { // masts: [position along the hull (-0.5 stern .. 0.5 bow), height factor, sail kind, sails on the mast]
+  feluca: [[0.08, 0.95, 'lat', 1]], fusta: [[0.1, 0.9, 'lat', 1]], chaika: [[0.05, 0.6, 'sq', 1]], tartane: [[0.1, 1.05, 'lat', 1]],
+  galiot: [[0.2, 0.85, 'lat', 1], [-0.12, 0.7, 'lat', 1]], galley: [[0.22, 0.8, 'lat', 1], [-0.08, 1.0, 'lat', 1]], dhow: [[0.14, 1.0, 'lat', 1], [-0.22, 0.7, 'lat', 1]],
+  galeazza: [[0.28, 0.8, 'lat', 1], [0.0, 1.0, 'lat', 1], [-0.28, 0.7, 'lat', 1]],
+  bertone: [[0.26, 0.8, 'sq', 1], [0.0, 1.0, 'sq', 2], [-0.3, 0.65, 'lat', 1]],
+  _square: [[0.28, 0.85, 'sq', 2], [0.0, 1.08, 'sq', 2], [-0.3, 0.7, 'lat', 1]], _lateen: [[0.18, 0.9, 'lat', 1], [-0.15, 0.75, 'lat', 1]],
+};
+function buildShip(type, sailHex, flagF, opts = {}) {
+  const T3 = THREE, def = SHIPS[type], oared = def.oars > 0.5, round = def.rig === 'square';
+  const L = 9 + Math.sqrt(def.hull) * 0.95, beam = L * (oared ? 0.17 : round ? 0.3 : 0.26), fb = L * (round ? 0.14 : oared ? 0.07 : 0.1), draft = L * 0.07;
+  const g = new T3.Group(); g.userData = { L, fb, sails: [], oars: [], flag: null };
+  const wood = new T3.MeshPhongMaterial({ color: opts.hostile ? 0x2a211b : oared ? 0x7a3324 : 0x5d4129, flatShading: true, shininess: 6 });
+  const deckM = new T3.MeshPhongMaterial({ color: 0x8f7350, flatShading: true, shininess: 4, side: T3.DoubleSide }), trim = new T3.MeshPhongMaterial({ color: 0xcfa85a, flatShading: true, shininess: 10 });
+  // hull lofted from stations: keel, bilge and gunwale on each side
+  const ST = 11, pos = [], idx = [], halfW = t => beam / 2 * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(t * 2 + 0.12) / 1.12, round ? 3.2 : 2.2)), 0.6);
+  for (let i = 0; i < ST; i++) {
+    const t = i / (ST - 1) - 0.5, z = -t * L, w = halfW(t), sheer = fb * (1 + 0.5 * Math.pow(Math.abs(t) * 2, 2) + (t < 0 && round ? 0.35 : 0));
+    const bowK = Math.max(0, t * 2 - 0.55) / 0.45, rake = bowK * bowK * L * 0.07, ky = -draft * (1 - bowK * bowK * 0.9), ww = Math.max(w, 0.02);
+    pos.push(-ww, sheer, z - rake, -w * 0.82, Math.max(ky, -draft * 0.3), z - rake * 0.4, 0, ky, z, w * 0.82, Math.max(ky, -draft * 0.3), z - rake * 0.4, ww, sheer, z - rake);
+    if (i) { const a = (i - 1) * 5, b = i * 5; for (let k = 0; k < 4; k++) idx.push(a + k, b + k, a + k + 1, a + k + 1, b + k, b + k + 1); }
+  }
+  idx.push(0, 1, 2, 2, 3, 4, 0, 2, 4); const e = (ST - 1) * 5; idx.push(e, e + 2, e + 1, e + 2, e + 4, e + 3, e, e + 4, e + 2);
+  const hg = new T3.BufferGeometry(); hg.setAttribute('position', new T3.Float32BufferAttribute(pos, 3)); hg.setIndex(idx); hg.computeVertexNormals();
+  const hullMat = wood.clone(); hullMat.side = T3.DoubleSide; g.add(new T3.Mesh(hg, hullMat));
+  // deck
+  const dp = [], di = []; for (let i = 0; i < ST; i++) { const t = i / (ST - 1) - 0.5, w = halfW(t) * 0.96; dp.push(-w, fb * 0.92, -t * L, w, fb * 0.92, -t * L); if (i) { const a = (i - 1) * 2; di.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } }
+  const dg = new T3.BufferGeometry(); dg.setAttribute('position', new T3.Float32BufferAttribute(dp, 3)); dg.setIndex(di); dg.computeVertexNormals(); g.add(new T3.Mesh(dg, deckM));
+  const box = (w, h, d, x, y, z, m) => { const b = new T3.Mesh(new T3.BoxGeometry(w, h, d), m); b.position.set(x, y, z); g.add(b); return b; };
+  // castles
+  if (round) { box(beam * 0.86, fb * (def.hull > 200 ? 1.5 : 1.0), L * 0.24, 0, fb * 1.5, L * 0.36, wood); box(beam * 0.9, fb * 0.12, L * 0.25, 0, fb * (def.hull > 200 ? 2.3 : 2.05), L * 0.36, trim); box(beam * 0.7, fb * 0.6, L * 0.14, 0, fb * 1.25, -L * 0.36, wood); }
+  else if (oared) { box(beam * 0.8, fb * 0.9, L * 0.12, 0, fb * 1.5, L * 0.42, trim); box(beam * 0.5, fb * 0.5, L * 0.1, 0, fb * 1.2, -L * 0.42, wood); const ram = box(beam * 0.12, fb * 0.25, L * 0.16, 0, fb * 0.75, -L * 0.56, wood); ram.rotation.x = 0.08; }
+  else box(beam * 0.7, fb * 0.6, L * 0.14, 0, fb * 1.25, L * 0.38, wood);
+  // masts and sails
+  const sailM = new T3.MeshPhongMaterial({ color: sailHex, emissive: sailHex, emissiveIntensity: 0.38, side: T3.DoubleSide, flatShading: false, shininess: 2 }), spar = new T3.MeshPhongMaterial({ color: 0x3d2c1c, flatShading: true });
+  const plan = SHIP_PLAN[type] || (round ? SHIP_PLAN._square : def.hull > 100 ? SHIP_PLAN._lateen : SHIP_PLAN.feluca);
+  let top = 0, topZ = 0;
+  for (const [mt, mh, kind, count] of plan) {
+    const H = L * 0.95 * mh, z = -mt * L;
+    const mast = new T3.Mesh(new T3.CylinderGeometry(L * 0.012, L * 0.02, H, 6), spar); mast.position.set(0, fb + H / 2, z); g.add(mast);
+    if (fb + H > top) { top = fb + H; topZ = z; }
+    const rig = new T3.Group(); rig.position.set(0, fb, z); g.add(rig); g.userData.sails.push(rig);
+    if (kind === 'sq') {
+      for (let s = 0; s < count; s++) {
+        const w = beam * (s ? 1.5 : 2.1) * mh, h = H * (count > 1 ? (s ? 0.3 : 0.42) : 0.62), y = count > 1 ? (s ? H * 0.76 : H * 0.36) : H * 0.5;
+        const sg = new T3.PlaneGeometry(w, h, 6, 4), p = sg.attributes.position;
+        for (let i = 0; i < p.count; i++) { const u = p.getX(i) / w, v = p.getY(i) / h; p.setZ(i, -(1 - 4 * u * u) * (1 - 2.2 * v * v) * w * 0.14); }
+        sg.computeVertexNormals(); const m = new T3.Mesh(sg, sailM); m.position.set(0, y, -L * 0.012); rig.add(m);
+        const yard = new T3.Mesh(new T3.CylinderGeometry(L * 0.008, L * 0.008, w * 1.04, 5), spar); yard.rotation.z = Math.PI / 2; yard.position.set(0, y + h / 2, 0); rig.add(yard);
+      }
+    } else {
+      // lateen: a long slanted yard with a triangular sail under it
+      const yl = H * 1.25, a = 0.95, fx = -Math.sin(a) * yl * 0.36, fy = H * 0.86 - Math.cos(a) * yl * 0.36, bx = Math.sin(a) * yl * 0.64, by = H * 0.86 + Math.cos(a) * yl * 0.64;
+      // in the rig's frame the yard runs fore-and-aft: forward is -z
+      const A = [0, fy, fx], Bp = [0, by, bx], C = [0, H * 0.12, bx * 0.82], mid = [beam * 0.35, (fy + by + H * 0.12) / 3, (fx + bx + bx * 0.82) / 3];
+      const sg = new T3.BufferGeometry(); sg.setAttribute('position', new T3.Float32BufferAttribute([...A, ...Bp, ...mid, ...Bp, ...C, ...mid, ...C, ...A, ...mid], 3)); sg.computeVertexNormals();
+      rig.add(new T3.Mesh(sg, sailM));
+      const yard = new T3.Mesh(new T3.CylinderGeometry(L * 0.008, L * 0.011, yl, 5), spar); yard.position.set(0, (fy + by) / 2, (fx + bx) / 2); yard.rotation.x = Math.atan2(bx - fx, by - fy); rig.add(yard);
+      rig.userData.lateen = 1;
+    }
+  }
+  // oars
+  if (oared) {
+    const n = Math.min(14, Math.round(L / 1.6)), om = new T3.MeshPhongMaterial({ color: 0xcdb48a, flatShading: true });
+    for (const side of [-1, 1]) { const og = new T3.Group(); og.position.set(side * beam * 0.45, fb * 0.8, 0); g.add(og); g.userData.oars.push([og, side]);
+      for (let i = 0; i < n; i++) { const o = new T3.Mesh(new T3.BoxGeometry(L * 0.3, 0.12, 0.3), om); o.position.set(side * L * 0.14, -fb * 0.55, (i / (n - 1) - 0.5) * L * 0.6); o.rotation.z = -side * 0.42; og.add(o); } }
+  }
+  // flag at the main masthead, and a long red streamer on ships that hunt you
+  if (flagF && FLAG_IMG[flagF]) {
+    const tex = new T3.CanvasTexture(FLAG_IMG[flagF]); const fm = new T3.Mesh(new T3.PlaneGeometry(L * 0.2, L * 0.13), new T3.MeshBasicMaterial({ map: tex, side: T3.DoubleSide }));
+    fm.position.set(0, top + L * 0.08, topZ + L * 0.1); fm.rotation.y = Math.PI / 2; g.add(fm); g.userData.flag = fm;
+  }
+  if (opts.hostile) { const st = new T3.Mesh(new T3.PlaneGeometry(L * 0.5, L * 0.03), new T3.MeshBasicMaterial({ color: 0xe0432c, side: T3.DoubleSide })); st.position.set(0, top - L * 0.02, topZ + L * 0.25); st.rotation.y = Math.PI / 2; g.add(st); }
+  if (opts.rival) { const st = new T3.Mesh(new T3.PlaneGeometry(L * 0.5, L * 0.03), new T3.MeshBasicMaterial({ color: 0xf0cf7a, side: T3.DoubleSide })); st.position.set(0, top - L * 0.02, topZ + L * 0.25); st.rotation.y = Math.PI / 2; g.add(st); }
+  // stern lantern
+  const lamp = new T3.Mesh(new T3.SphereGeometry(L * 0.018, 6, 5), new T3.MeshBasicMaterial({ color: 0xffd38a })); lamp.position.set(0, fb * (round ? 2.7 : 1.9), L * 0.47); g.add(lamp); g.userData.lamp = lamp;
+  return g;
+}
+function rebuildPlayerShip() {
+  if (!DECK.renderer) return;
+  if (DECK.playerShip) DECK.scene.remove(DECK.playerShip);
+  DECK.playerType = S.ship.type;
+  DECK.playerShip = buildShip(S.ship.type, 0xf1e8cf, playerFlag());
+  DECK.scene.add(DECK.playerShip); DECK.wakePts = [];
+}
+function poseShip(g, wx, wy, heading, t, amp, sailSet, speed) {
+  const x = d3x(wx), z = d3z(wy), L = g.userData.L, fx = Math.sin(heading), fz = -Math.cos(heading);
+  const h0 = waveH(x + DECK.org[0] * NM, z + DECK.org[1] * NM, t, amp), hb = waveH(x + fx * L * 0.4 + DECK.org[0] * NM, z + fz * L * 0.4 + DECK.org[1] * NM, t, amp), hs = waveH(x - fz * L * 0.2 + DECK.org[0] * NM, z + fx * L * 0.2 + DECK.org[1] * NM, t, amp);
+  const rw = angDiff(heading, windTo()), heel = Math.sin(rw) * 0.09 * sailSet * Math.min(1, S.wind.str / 16);
+  g.position.set(x, h0 * 0.8, z); g.rotation.set(0, 0, 0); g.rotation.order = 'YXZ';
+  g.rotation.y = -heading; g.rotation.x = Math.atan2(hb - h0, L * 0.4) * 0.8; g.rotation.z = Math.atan2(hs - h0, L * 0.2) * 0.5 + heel;
+  for (const rig of g.userData.sails) { rig.rotation.y = clamp(-rw * 0.45, -0.75, 0.75) * (rig.userData.lateen ? 0.7 : 1); rig.scale.y = sailSet <= 0 ? 0.001 : 1; rig.visible = sailSet > 0; if (sailSet > 0 && sailSet < 1) rig.scale.y = 0.72; }
+  for (const [og, side] of g.userData.oars) { og.visible = speed > 0.3; og.rotation.y = Math.sin(t * 2.6) * 0.3 * side; og.rotation.z = Math.cos(t * 2.6) * 0.1 * side; }
+  if (g.userData.flag) g.userData.flag.rotation.y = Math.PI / 2 + rw + Math.sin(t * 5) * 0.15;
+}
+
+// ----- land, towns and weather -----
+const TG = 150, TCELL = 0.7; // terrain grid: cells of 0.7 nautical miles
+function deckTerrain(force) {
+  if (!force && DECK.terrAt && DECK.th === curTh() && Math.hypot(S.x - DECK.terrAt[0], S.y - DECK.terrAt[1]) < 18) return;
+  const T3 = THREE, th = curTh();
+  DECK.org = [S.x, S.y]; DECK.terrAt = [S.x, S.y]; DECK.th = th; DECK.wakePts = [];
+  if (DECK.land) { DECK.scene.remove(DECK.land); DECK.land.geometry.dispose(); }
+  for (const t of DECK.towns) DECK.scene.remove(t); DECK.towns = [];
+  const N = TG + 1, x0 = S.x - TG / 2 * TCELL, y0 = S.y - TG / 2 * TCELL;
+  let m = new Float32Array(N * N), any = false;
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const l = isLand(x0 + i * TCELL, y0 + j * TCELL) ? 1 : 0; m[j * N + i] = l; if (l) any = true; }
+  const blur = src => { const o = new Float32Array(N * N); for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { let s = 0, c = 0; for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { const x = i + a, y = j + b; if (x < 0 || y < 0 || x >= N || y >= N) continue; s += src[y * N + x]; c++; } o[j * N + i] = s / c; } return o; };
+  const land = m; let bl = blur(blur(blur(m)));
+  const hAt = (i, j) => { const l = land[j * N + i], b = bl[j * N + i]; if (!l) return -7 - (1 - b) * 4;
+    const wx = x0 + i * TCELL, wy = y0 + j * TCELL, n = 0.55 + 0.45 * Math.sin(wx * 0.31 + Math.sin(wy * 0.23) * 2) * Math.sin(wy * 0.27 + Math.sin(wx * 0.19) * 2);
+    return 1.6 + Math.pow(Math.max(0, b - 0.35) / 0.65, 1.7) * 150 * n + b * 5; };
+  DECK.hAt = (wx, wy) => { const i = clamp(Math.round((wx - x0) / TCELL), 0, N - 1), j = clamp(Math.round((wy - y0) / TCELL), 0, N - 1); return hAt(i, j); };
+  if (any) {
+    const pos = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3), idx = [];
+    const bio = th === 'carib' ? biomeCarib : th === 'indian' ? biomeIndian : biomeRGB;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const k = j * N + i, h = hAt(i, j), wx = x0 + i * TCELL, wy = y0 + j * TCELL;
+      pos[k * 3] = d3x(wx); pos[k * 3 + 1] = h; pos[k * 3 + 2] = d3z(wy);
+      let c = [60, 80, 90];
+      if (land[k]) { const [lo, la] = unproj(wx, wy); c = bio(lo, la, bl[k] * 40, 0.5); if (h < 4) c = mixc(c, [222, 204, 160], 0.7); else if (h > 128) c = mixc(c, [238, 238, 236], clamp((h - 128) / 20, 0, 1)); else if (h > 60) c = mixc(c, [128, 118, 104], clamp((h - 60) / 60, 0, 0.7)); }
+      col[k * 3] = c[0] / 300; col[k * 3 + 1] = c[1] / 300; col[k * 3 + 2] = c[2] / 300;
+      if (i && j && (land[k] || land[k - 1] || land[k - N] || land[k - N - 1])) idx.push(k - N - 1, k - 1, k - N, k - N, k - 1, k);
+    }
+    const g = new T3.BufferGeometry(); g.setAttribute('position', new T3.BufferAttribute(pos, 3)); g.setAttribute('color', new T3.BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+    DECK.land = new T3.Mesh(g, new T3.MeshPhongMaterial({ vertexColors: true, flatShading: true, shininess: 2 })); DECK.scene.add(DECK.land);
+  } else DECK.land = null;
+  // harbour towns
+  const R = TG / 2 * TCELL;
+  for (const p of TPORTS()) { if (Math.abs(p.x - S.x) > R - 2 || Math.abs(p.y - S.y) > R - 2 || (p.site && p.f === 'none')) continue; const t = buildTown(p); DECK.scene.add(t); DECK.towns.push(t); }
+}
+const TOWN_LOOK = { islamic: [0xf2ead8, 0xe7dcc4, 0x7fa39a], iberian: [0xf3ede0, 0xe9dcc2, 0xb5533a], italian: [0xe8c79a, 0xd9a878, 0xa8452f], french: [0xe6dcc6, 0xcfc4ad, 0x54606e], fortress: [0xe3cf9f, 0xd7c08e, 0xb5633a], empty: [0xb89a6a, 0xa98b5c, 0x8a7a4a] };
+function buildTown(p) {
+  const T3 = THREE, g = new T3.Group(), style = townStyle(p.f), [w1, w2, roof] = TOWN_LOOK[style] || TOWN_LOOK.french, rnd = seeded(hash(p.id));
+  const ph = m => new T3.MeshPhongMaterial({ color: m, flatShading: true, shininess: 3 });
+  const mats = [ph(w1), ph(w2)], roofM = ph(roof), n = 36 + (p.yard || 0) * 24;
+  const base = Math.max(1.5, DECK.hAt(p.x, p.y)); g.position.set(d3x(p.x), 0, d3z(p.y));
+  const ground = (dx, dz) => Math.max(1.2, DECK.hAt(p.x + dx / NM, p.y + dz / NM));
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * TAU, r = 9 + rnd() * (22 + n * 0.55), dx = Math.cos(a) * r, dz = Math.sin(a) * r, gy = ground(dx, dz); if (gy < 1.3 && rnd() < 0.7) continue;
+    const w = 4.5 + rnd() * 4.5, h = 3.5 + rnd() * 6, d = 4.5 + rnd() * 4.5;
+    const b = new T3.Mesh(new T3.BoxGeometry(w, h, d), mats[i % 2]); b.position.set(dx, gy + h / 2 - 0.4, dz); b.rotation.y = rnd() * 3; g.add(b);
+    if (style === 'islamic') { if (rnd() < 0.25) { const dm = new T3.Mesh(new T3.SphereGeometry(w * 0.42, 8, 5, 0, TAU, 0, Math.PI / 2), roofM); dm.position.set(dx, gy + h - 0.4, dz); g.add(dm); } }
+    else if (style !== 'empty') { const rf = new T3.Mesh(new T3.ConeGeometry(Math.max(w, d) * 0.74, 2.4, 4), roofM); rf.position.set(dx, gy + h + 0.8, dz); rf.rotation.y = b.rotation.y + Math.PI / 4; g.add(rf); }
+  }
+  // the landmark: a minaret and dome, a campanile, a church tower or a keep
+  const ly = base, lm = new T3.Group(); lm.position.y = ly; lm.scale.setScalar(1.7); g.add(lm);
+  if (style === 'islamic') { const mn = new T3.Mesh(new T3.CylinderGeometry(0.7, 0.9, 20, 8), mats[0]); mn.position.set(5, 10, 0); lm.add(mn); const cap = new T3.Mesh(new T3.ConeGeometry(1.1, 3.5, 8), roofM); cap.position.set(5, 21.7, 0); lm.add(cap);
+    const hall = new T3.Mesh(new T3.BoxGeometry(9, 5, 9), mats[1]); hall.position.set(-3, 2.5, 0); lm.add(hall); const dm = new T3.Mesh(new T3.SphereGeometry(4.2, 12, 7, 0, TAU, 0, Math.PI / 2), roofM); dm.position.set(-3, 5, 0); lm.add(dm); }
+  else if (style === 'fortress') { const keep = new T3.Mesh(new T3.BoxGeometry(12, 9, 12), mats[0]); keep.position.set(0, 4.5, 0); lm.add(keep); for (const [sx2, sz2] of [[-7, -7], [7, -7], [-7, 7], [7, 7]]) { const tw = new T3.Mesh(new T3.CylinderGeometry(2.2, 2.6, 12, 8), mats[1]); tw.position.set(sx2, 6, sz2); lm.add(tw); } }
+  else if (style !== 'empty') { const tw = new T3.Mesh(new T3.BoxGeometry(3.2, style === 'italian' ? 22 : 15, 3.2), mats[0]); tw.position.set(0, (style === 'italian' ? 11 : 7.5), 0); lm.add(tw); const sp = new T3.Mesh(new T3.ConeGeometry(2.6, style === 'french' ? 8 : 4, 4), roofM); sp.position.set(0, (style === 'italian' ? 24 : 15 + (style === 'french' ? 4 : 2)), 0); sp.rotation.y = Math.PI / 4; lm.add(sp);
+    const nave = new T3.Mesh(new T3.BoxGeometry(6, 6, 12), mats[1]); nave.position.set(5, 3, 0); lm.add(nave); }
+  // harbour light and the flag
+  const lamp = new T3.Mesh(new T3.SphereGeometry(1.1, 8, 6), new T3.MeshBasicMaterial({ color: 0xffcf7a })); lamp.position.set(d3x(p.wx) - d3x(p.x), 6, d3z(p.wy) - d3z(p.y)); lamp.position.multiplyScalar(0.55); lamp.position.y = Math.max(5, ground(lamp.position.x, lamp.position.z) + 5);
+  const post = new T3.Mesh(new T3.CylinderGeometry(0.5, 0.8, lamp.position.y, 6), mats[0]); post.position.set(lamp.position.x, lamp.position.y / 2, lamp.position.z); g.add(post, lamp);
+  if (FLAG_IMG[p.f]) { const fm = new T3.Mesh(new T3.PlaneGeometry(6, 4), new T3.MeshBasicMaterial({ map: new T3.CanvasTexture(FLAG_IMG[p.f]), side: T3.DoubleSide })); fm.position.set(0, ly + 30, 0); g.add(fm); const pole = new T3.Mesh(new T3.CylinderGeometry(0.12, 0.12, 8, 4), mats[1]); pole.position.set(-3, ly + 27, 0); g.add(pole); g.userData.flag = fm; }
+  // name board
+  const c = document.createElement('canvas'); c.width = 512; c.height = 96; const x = c.getContext('2d'); x.font = '52px Georgia, serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineWidth = 8; x.strokeStyle = 'rgba(16,14,10,0.85)'; x.strokeText(p.name, 256, 48); x.fillStyle = '#f0e6cf'; x.fillText(p.name, 256, 48);
+  const sp = new T3.Sprite(new T3.SpriteMaterial({ map: new T3.CanvasTexture(c), depthTest: false, fog: false, sizeAttenuation: false })); sp.scale.set(0.22, 0.041, 1); sp.position.set(0, ly + 42, 0); g.add(sp);
+  g.userData.port = p.id; return g;
+}
+function deckWeather() {
+  const T3 = THREE;
+  for (const m of DECK.wx) { DECK.scene.remove(m); m.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); } DECK.wx = [];
+  for (const c of S.wx || []) {
+    if (Math.hypot(c.x - S.x, c.y - S.y) > 260) continue;
+    const r = c.r * NM; let m;
+    if (c.k === 'fog') { m = new T3.Mesh(new T3.SphereGeometry(1, 20, 10), new T3.MeshBasicMaterial({ color: 0xe6e8e2, transparent: true, opacity: 0.5, depthWrite: false, side: T3.DoubleSide, fog: false })); m.scale.set(r, 90, r); m.position.set(d3x(c.x), 0, d3z(c.y)); }
+    else { m = new T3.Group(); const cur = new T3.Mesh(new T3.CylinderGeometry(r * 0.9, r, 420, 28, 1, true), new T3.MeshBasicMaterial({ color: c.hur ? 0x0c1018 : 0x1c2430, transparent: true, opacity: 0.42, depthWrite: false, side: T3.DoubleSide, fog: false })); cur.position.y = 210;
+      const lid = new T3.Mesh(new T3.SphereGeometry(1, 20, 8), new T3.MeshBasicMaterial({ color: c.hur ? 0x0a0d14 : 0x232b38, transparent: true, opacity: 0.85, depthWrite: false, fog: false })); lid.scale.set(r * 1.15, 110, r * 1.15); lid.position.y = 430; m.add(cur, lid); m.position.set(d3x(c.x), 0, d3z(c.y)); }
+    DECK.scene.add(m); DECK.wx.push(m);
+  }
+}
+
+// ----- every frame -----
+function drawDeck(now, dt) {
+  const D = DECK, T3 = THREE; if (!D.renderer) return;
+  D.t += dt; const t = D.t;
+  if (D.playerType !== S.ship.type) rebuildPlayerShip();
+  deckTerrain(false);
+  // light of the hour
+  const hour = S.t % 24, sa = (hour - 6) / 12 * Math.PI, el = Math.sin(sa), nk = nightK(), sq = !S.docked && wxAt(S.x, S.y, 'squall'), fogIn = inFog();
+  const sunDir = new T3.Vector3(Math.cos(sa) * 0.9, Math.max(el, -0.2) + 0.04, 0.42).normalize(), low = clamp(1 - Math.abs(el) * 3.2, 0, 1) * (1 - nk * 0.6);
+  const lerp3 = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k), C = (a) => new T3.Color(a[0], a[1], a[2]);
+  let top = lerp3([0.2, 0.42, 0.72], [0.1, 0.07, 0.24], nk), hor = lerp3(lerp3([0.74, 0.85, 0.9], [0.97, 0.66, 0.42], low), [0.36, 0.25, 0.5], nk);
+  let deep = lerp3([0.03, 0.2, 0.33], [0.05, 0.05, 0.2], nk), shal = lerp3([0.1, 0.46, 0.52], [0.16, 0.14, 0.42], nk), sunC = lerp3(lerp3([1, 0.95, 0.82], [1, 0.62, 0.3], low), [0.5, 0.52, 0.8], nk);
+  if (sq) { const g = sq.hur ? 0.8 : 0.6; top = lerp3(top, [0.1, 0.12, 0.15], g); hor = lerp3(hor, [0.3, 0.34, 0.38], g); deep = lerp3(deep, [0.04, 0.09, 0.12], g); shal = lerp3(shal, [0.16, 0.25, 0.27], g); sunC = lerp3(sunC, [0.2, 0.2, 0.2], g); }
+  if (fogIn) { hor = lerp3(hor, [0.82, 0.84, 0.82], 0.85 * (1 - nk * 0.6)); top = lerp3(top, hor, 0.8); }
+  const fogD = fogIn ? 0.0045 : sq ? 0.0011 : 0.00036 + nk * 0.00008, amp = (0.35 + S.wind.str / 24 * 1.25) * (sq ? (sq.hur ? 2.4 : 1.7) : 1);
+  D.amp = D.amp == null ? amp : D.amp + (amp - D.amp) * Math.min(1, dt * 0.6);
+  D.fogD = D.fogD == null ? fogD : D.fogD + (fogD - D.fogD) * Math.min(1, dt * 0.8);
+  D.scene.fog.color.setRGB(hor[0], hor[1], hor[2]); D.scene.fog.density = D.fogD;
+  D.hemi.intensity = 0.34 + 0.5 * (1 - nk); D.hemi.color.setRGB(top[0] * 0.6 + 0.4, top[1] * 0.6 + 0.4, top[2] * 0.6 + 0.4);
+  D.sun.color.setRGB(sunC[0], sunC[1], sunC[2]); D.sun.intensity = (0.3 + 0.75 * (1 - nk)) * (sq ? 0.5 : 1); D.sun.position.copy(sunDir).multiplyScalar(500);
+  const su = D.sky.material.uniforms; su.top.value = C(top); su.hor.value = C(hor); su.sunDir.value.copy(sunDir); su.sunCol.value = C(sunC.map(v => v * (sq || fogIn ? 0.15 : 1))); su.night.value = nk * (sq || fogIn ? 0 : 1);
+  const wu = D.sea.material.uniforms; wu.t.value = t; wu.amp.value = D.amp; wu.off.value.set(D.org[0] * NM, D.org[1] * NM); wu.sunDir.value.copy(sunDir); wu.sunCol.value = C(sunC.map(v => v * (sq || fogIn ? 0.1 : 1)));
+  wu.deep.value = C(deep); wu.shal.value = C(shal); wu.skyC.value = C(lerp3(hor, top, 0.6)); wu.fogC.value = C(hor); wu.fogD.value = D.fogD;
+  // your ship
+  const ps = D.playerShip, moored = !!S.docked;
+  poseShip(ps, S.x, S.y, S.heading, t, D.amp, moored ? 0 : S.sail / 2, S.speed);
+  ps.userData.lamp.visible = nk > 0.3;
+  const px = ps.position.x, pz = ps.position.z, snap = 7000 / 220;
+  D.sea.position.set(Math.round(px / snap) * snap, 0, Math.round(pz / snap) * snap); D.sky.position.set(px, -40, pz);
+  // other ships
+  const seen = new Set();
+  for (const n of S.npcs) {
+    const d = Math.hypot(n.x - S.x, n.y - S.y); if (d > 70 || !npcVisible(n)) continue;
+    seen.add(n.id); const hostile = huntsYou(n), key = n.type + (hostile ? 'h' : '') + n.f;
+    let rec = D.ships.get(n.id);
+    if (!rec || rec.key !== key) { if (rec) D.scene.remove(rec.g); const fc = hexRGB(FACTIONS[n.f].color), sc = new T3.Color(0.93 * 0.5 + fc[0] * 0.5, 0.9 * 0.5 + fc[1] * 0.5, 0.8 * 0.5 + fc[2] * 0.5); rec = { key, g: buildShip(n.type, sc, n.f === 'rogue' ? null : n.f, { hostile, rival: n.kind === 'rival' }) }; D.ships.set(n.id, rec); D.scene.add(rec.g); }
+    poseShip(rec.g, n.x, n.y, n.heading, t, D.amp, 1, 3); rec.g.userData.lamp.visible = nk > 0.3;
+  }
+  for (const [id, rec] of D.ships) if (!seen.has(id)) { D.scene.remove(rec.g); D.ships.delete(id); }
+  for (const tw of D.towns) if (tw.userData.flag) tw.userData.flag.rotation.y = -windTo() + Math.PI / 2;
+  if (!D.wxAt || t - D.wxAt > 1.5) { D.wxAt = t; deckWeather(); }
+  D.rain.visible = !!sq; if (sq) { D.rain.position.set(px, 0, pz); const a = D.rain.geometry.attributes.position; for (let i = 0; i < a.count; i += 2) { let y = a.getY(i) - dt * 95; if (y < 0) y += 70; a.setY(i, y); a.setY(i + 1, y - 5); } a.needsUpdate = true; }
+  // wake ribbon
+  const wp = D.wakePts, L = ps.userData.L, sx0 = px - Math.sin(S.heading) * L * 0.45, sz0 = pz + Math.cos(S.heading) * L * 0.45;
+  if (!wp.length || Math.hypot(sx0 - wp[0][0], sz0 - wp[0][1]) > L * 0.3) { wp.unshift([sx0, sz0, S.heading, S.speed]); if (wp.length > 60) wp.pop(); }
+  const wa = D.wakeM.geometry.attributes.position, al = D.wakeM.geometry.attributes.alpha;
+  for (let i = 0; i < 60; i++) { const q = wp[Math.min(i, wp.length - 1)] || [sx0, sz0, S.heading, 0], w = L * 0.07 + i * L * 0.014, nx = Math.cos(q[2]), nz = Math.sin(q[2]), y = waveH(q[0] + D.org[0] * NM, q[1] + D.org[1] * NM, t, D.amp) * 0.8 + 0.25;
+    wa.setXYZ(i * 2, q[0] - nx * w, y, q[1] - nz * w); wa.setXYZ(i * 2 + 1, q[0] + nx * w, y, q[1] + nz * w); const a = i < wp.length ? Math.pow(1 - i / 60, 2) * 0.7 * Math.min(1, q[3] / 4) : 0; al.setX(i * 2, a); al.setX(i * 2 + 1, a); }
+  wa.needsUpdate = true; al.needsUpdate = true; D.wakeM.material.uniforms.lum.value = 1 - 0.62 * nk;
+  // camera
+  const cam = D.camera, fwd = new T3.Vector3(Math.sin(S.heading), 0, -Math.cos(S.heading));
+  if (D.cam === 'helm') {
+    const eye = new T3.Vector3(0, ps.userData.fb * 2.1 + L * 0.06, L * 0.36); ps.localToWorld(eye);
+    const a = S.heading + D.yaw, look = new T3.Vector3(Math.sin(a), -(D.pitch - 0.3) * 0.9, -Math.cos(a));
+    cam.position.copy(eye); cam.up.set(Math.sin(ps.rotation.z) * 0.4 * Math.cos(S.heading), 1, Math.sin(ps.rotation.z) * 0.4 * Math.sin(S.heading)); cam.lookAt(eye.clone().add(look.multiplyScalar(100))); cam.fov = 66;
+  } else {
+    const a = S.heading + Math.PI + D.yaw, dist = L * 3.1 * D.zoom, target = new T3.Vector3(px, ps.position.y + L * 0.32, pz).add(fwd.clone().multiplyScalar(L * 0.25));
+    const want = new T3.Vector3(px + Math.sin(a) * Math.cos(D.pitch) * dist, Math.max(2.5, ps.position.y + Math.sin(D.pitch) * dist), pz - Math.cos(a) * Math.cos(D.pitch) * dist);
+    if (!D.camInit) { cam.position.copy(want); D.camInit = 1; } else cam.position.lerp(want, Math.min(1, dt * 4));
+    cam.up.set(0, 1, 0); cam.lookAt(target); cam.fov = 52;
+  }
+  cam.updateProjectionMatrix();
+  D.renderer.render(D.scene, cam);
+}
+
 function renderCaptain() {
   const rows = Object.entries(SKILLS).map(([k, s]) => `<div class="skill"><div><b>${s.name}</b><small>${s.desc}</small></div><span class="pips">${'<i class="on"></i>'.repeat(S.skills[k])}${'<i></i>'.repeat(10 - S.skills[k])}</span>
     <button class="btn sm" data-skill="${k}" ${S.points > 0 && S.skills[k] < 10 ? '' : 'disabled'} aria-label="Improve ${s.name}">+</button></div>`).join('');
@@ -4741,6 +5712,8 @@ function renderCaptain() {
     <h4 class="sect">Holdings</h4>
     ${Object.keys(S.posts).length ? Object.entries(S.posts).map(([id, po]) => `<div class="card slim"><b>${portById(id).name}</b><small>${po.kind === 'harbour' ? 'Your harbour' : 'Fondaco'} · level ${po.level} · garrison ${po.garrison} · towers ${po.tower} · ${fmt(postIncome(po))} d a month</small></div>`).join('') : '<p class="mute">None yet. Open a fondaco from the Holdings tab of a smaller port, or found a harbour at an empty anchorage such as Formentera, Lampedusa, Gavdos, Kastellorizo or Mogador.</p>'}
     ${Object.keys(S.campaigns).length ? `<h4 class="sect">Campaigns</h4>${Object.entries(S.campaigns).map(([id, c]) => `<div class="card slim"><b>${CAMPAIGNS.find(x => x.id === id).name}</b><small>${c.side === 'league' ? 'Christian fleet' : 'Ottoman fleet'}, ${c.wing} · ${c.prizes} ship${c.prizes === 1 ? '' : 's'} taken${S.flags['hero_' + id] ? ' · hero of the day' : ''}</small></div>`).join('')}` : ''}
+    <h4 class="sect">Rival captains</h4>${rivalsHTML()}
+    <h4 class="sect">Book of deeds <small>${deedsDone()} of ${DEEDS.length} accomplished</small></h4>${deedsHTML()}
     <h4 class="sect">Papers</h4>
     <div class="card slim"><b>${S.allegiance ? `${rankName(S.allegiance)} of the ${FACTIONS[S.allegiance].name}` : 'No commission'}</b><small>${S.allegiance ? (RANK_REP[rankOf(S.allegiance) + 1] ? `Rank ${rankOf(S.allegiance) + 1} of 8. Next: ${(RANKS[S.allegiance] || RANKS._)[rankOf(S.allegiance) + 1]} at reputation ${RANK_REP[rankOf(S.allegiance) + 1]} (now ${S.rep[S.allegiance]}). ` : 'Highest rank. ') : ''}${S.marque ? `Letter of marque from the ${FACTIONS[S.marque.f].name}: lawful prey is ${licTargets(S.marque.f)}.` : 'No letter of marque. Attacking a nation you are not at war with is piracy and earns a bounty.'} ${passReason() ? `Black Sea: open to you (${passReason().toLowerCase()}${passReason() === 'Imperial firman' ? `, until ${dueStr({ due: S.firmanUntil })}` : ''}).` : 'Black Sea: closed to you without a firman.'}</small></div>
     <h4 class="sect">Standing with the powers ${totalBounty() ? `<small class="bad">Wanted: ${fmt(totalBounty())} ducats in all</small>` : ''}</h4><div class="reps">${reps}</div>
@@ -4788,6 +5761,7 @@ document.addEventListener('click', e => {
   audioInit();
   if (d.lang) { setLang(d.lang); return; }
   if (d.mfilter) { marketFilter = d.mfilter; renderPort(); return; }
+  if (d.ev != null) { chooseEvent(+d.ev); return; }
   if (d.close != null) { closeModal(); return; }
   if (d.tab) { portTab = d.tab; renderPort(); return; }
   if (d.sail != null) { S.sail = +d.sail; if (S.docked) undock(); updateHUD(); return; }
@@ -4853,6 +5827,8 @@ document.addEventListener('click', e => {
   if (!act) return;
   if (act === 'dock' && nearPort) dock(nearPort);
   else if (act === 'attack' && nearShip) startBattle(nearShip, true);
+  else if (act === 'hail' && nearShip) hailShip(nearShip);
+  else if (act === 'evclose') { EV = null; closeModal(); updateHUD(); }
   else if (act === 'leave') undock();
   else if (act === 'repair') {
     const def = shipDef(), dmg = def.hull - S.ship.hull, per = (4 + def.hull / 80) * (hasLt('wright') ? 0.6 : 1), n = Math.min(dmg, Math.floor(S.gold / per));
@@ -4892,7 +5868,9 @@ document.addEventListener('click', e => {
   else if (act === 'tiptoggle') { setTips(!tipsOn); renderCaptain(); }
   else if (act === 'zin') view.z = clamp(view.z * 1.35, minZoom(), 8);
   else if (act === 'zout') view.z = clamp(view.z / 1.35, minZoom(), 8);
-  else if (act === 'fast') { timeScale = timeScale > 1 ? 1 : 3; updateHUD(); }
+  else if (act === 'fast') { if (DECK.on) { DECK.fast = !DECK.fast; timeScale = DECK.fast ? DECK_FAST : DECK_TIME; } else timeScale = timeScale > 1 ? 1 : 3; updateHUD(); }
+  else if (act === 'deck' || act === 'deckexit') toggleDeck();
+  else if (act === 'deckcam') { DECK.cam = DECK.cam === 'chase' ? 'helm' : 'chase'; DECK.yaw = 0; DECK.pitch = 0.3; DECK.camInit = 0; t.textContent = DECK.cam === 'chase' ? 'Helm view' : 'Chase view'; }
   else if (act === 'newgame') { clearSave(); S = null; B = null; renderStart(); document.querySelectorAll('.modal').forEach(m => m.hidden = true); $('#scrim').hidden = false; $('#m-start').hidden = false; modalOpen = 'start'; paused = true; }
   else if (act === 'continue') { const s = loadSave(); if (s) { S = s; startPlaying(); } }
   else if (act === 'begin') {
@@ -4906,6 +5884,7 @@ function toggle3D() {
   resize(); const b = $('#tiltBtn'); if (b) b.setAttribute('aria-pressed', String(tilt3D));
 }
 function startPlaying() {
+  if (DECK.on) exitDeck();
   pathCache.clear();
   migrate(); applyHistory(true);
   if (!ROGUES_ENABLED) { for (const k in S.offers) S.offers[k].list = S.offers[k].list.filter(c => c.target !== 'rogue'); S.contracts = S.contracts.filter(c => c.target !== 'rogue'); }
@@ -4925,6 +5904,10 @@ cv.addEventListener('pointerdown', e => {
 });
 cv.addEventListener('wheel', e => { e.preventDefault(); view.z = clamp(view.z * (e.deltaY < 0 ? 1.12 : 1 / 1.12), minZoom(), 8); }, { passive: false });
 const KEYMAP = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right' };
+for (const b of document.querySelectorAll('.steer')) {
+  const set = v => e => { e.preventDefault(); keys[b.dataset.steer] = v; };
+  b.addEventListener('pointerdown', set(true)); b.addEventListener('pointerup', set(false)); b.addEventListener('pointerleave', set(false)); b.addEventListener('pointercancel', set(false));
+}
 window.addEventListener('keydown', e => {
   if (S) audioInit();
   if (e.target.tagName === 'INPUT') return;
@@ -4935,8 +5918,10 @@ window.addEventListener('keydown', e => {
   if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') { S.sail = Math.min(2, S.sail + 1); e.preventDefault(); }
   else if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') { S.sail = Math.max(0, S.sail - 1); e.preventDefault(); }
   else if ((e.key === 'e' || e.key === 'E' || e.key === 'Enter') && nearPort) dock(nearPort);
+  else if ((e.key === 'h' || e.key === 'H') && nearShip && !nearPort && !S.docked && canHail(nearShip)) hailShip(nearShip);
   else if (e.key === 'c' || e.key === 'C') { renderCourse(); openModal('course'); }
-  else if (e.key === 'f' || e.key === 'F') timeScale = timeScale > 1 ? 1 : 3;
+  else if (e.key === 'f' || e.key === 'F') { if (DECK.on) { DECK.fast = !DECK.fast; timeScale = DECK.fast ? DECK_FAST : DECK_TIME; } else timeScale = timeScale > 1 ? 1 : 3; }
+  else if (e.key === 'g' || e.key === 'G') toggleDeck();
   else if (e.key === 'v' || e.key === 'V') toggle3D();
   else if (e.key === 's' && e.altKey) { const on = !(AUDIO.sfxOn || AUDIO.musicOn); setSfx(on); setMusic(on); }
   else if (e.key === '+' || e.key === '=') view.z = clamp(view.z * 1.35, minZoom(), 8);
@@ -4960,7 +5945,7 @@ function frame(now) {
   if (S) {
     update(dt);
     aiTimer += dt; if (aiTimer > 0.4 && !paused && !modalOpen) { aiTimer = 0; npcAI(); discoverNear(S.x, S.y, 95); }
-    draw(now);
+    if (DECK.on) drawDeck(now, dt); else draw(now);
     hudTimer += dt; if (hudTimer > 0.2) { hudTimer = 0; updateHUD(); }
     tickTips(dt);
   } else drawIdle(now);
